@@ -35,12 +35,6 @@ study_pop = read_csv(here::here("Data/studypop.csv")) %>%
          male = as.factor(male)) 
 ```
 
-Quick data descriptions; because of the length of the output, we don't execute this command here, but encourage you to!
-
-```{r, eval = FALSE}
-describe(study_pop)
-```
-
 Next we remove missing values and reorder predictors (environmental variables first, confounders second). In keeping with standard practice, we'll ln-transform the environmental exposures and the outcome. This is the dataset we'll use to illustrate variable selection methods. 
 
 ```{r}
