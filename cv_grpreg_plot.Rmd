@@ -74,11 +74,6 @@ Create grouping variable. If there are coefficients to be included in the model 
 
 ```{r}
 group3 <- vector()
-group3[grepl("lbx1|0",colnames(x))] <- "Non-Dioxin-like PCB"
-group3[grepl("lbxd", colnames(x))] <- "TEQ"
-group3[grepl("lbxf", colnames(x))] <- "TEQ"
-group3[grepl("lbxh|p", colnames(x))] <- "Non-Ortho PCB"
-group3[grepl("lbx118la", colnames(x))] <- "TEQ"
 group3[grepl("pct", colnames(x))] <- "0"
 group3[grepl("bcsi", colnames(x))] <- "0"
 group3[grepl("bmi", colnames(x))] <- "0"
@@ -87,6 +82,11 @@ group3[grepl("race", colnames(x))] <- "0"
 group3[grepl("male", colnames(x))] <- "0"
 group3[grepl("bxcot", colnames(x))] <- "0"
 group3[grepl("age", colnames(x))] <- "0"
+group3[grepl("lbx1|0",colnames(x))] <- "Non-Dioxin-like PCB"
+group3[grepl("lbxd", colnames(x))] <- "TEQ"
+group3[grepl("lbxf", colnames(x))] <- "TEQ"
+group3[grepl("lbxh|p", colnames(x))] <- "Non-Ortho PCB"
+group3[grepl("lbx118la", colnames(x))] <- "TEQ"
 group3 <- as.factor(group3)
 
 cbind(colnames(x), group3) #bind by columns
@@ -181,12 +181,18 @@ repeat_cv =
   tibble(seed = 1:5) %>%
   mutate(
     fits = map(seed, ~fit_with_cv(seed = .x))) %>% 
-  unnest()
+  unnest() %>% 
+  mutate(seed = as.factor(seed))
   
 repeat_cv %>% 
-  ggplot(aes(x = lam, y = cve)) + 
-  geom_pointrange(aes(group = seed, ymin = lower, ymax = upper)) + 
-  geom_line(aes(group = seed))
+  ggplot(aes(x = lam, y = cve, color = seed)) + 
+  geom_point() + 
+  geom_line() +
+  geom_errorbar(aes(ymin = lower, ymax = upper))
 
+repeat_cv %>% 
+  ggplot(aes(x = lam, y = cve, color = seed)) + 
+  geom_point() + 
+  geom_line()
 ```
 
