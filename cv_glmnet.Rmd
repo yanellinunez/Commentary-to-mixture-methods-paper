@@ -1,0 +1,183 @@
+---
+title: "beta coefficients plot"
+author: "Yanelli Nunez"
+date: "7/12/2019"
+output: 
+  html_document:
+    toc: TRUE
+    toc_float: TRUE
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+#install.packages("tidyverse")
+library(tidyverse)
+#install.packages("janitor")
+library(janitor)
+#install.packages("caret")
+library(caret)
+#install.packages("Hmisc")
+library(Hmisc)
+#install.packages("glmnet")
+library(glmnet)
+```
+
+# Data Import and Cleaning 
+
+First, load the dataset; clean up names as needed; and convert factors to, well, factors. Next we remove missing values and reorder predictors (environmental variables first, confounders second). In keeping with standard practice, we'll ln-transform the environmental exposures and the outcome. This is the dataset we'll use to illustrate variable selection methods.
+
+```{r}
+study_pop = read_csv("Data/studypop.csv") %>% 
+  clean_names(case = c("old_janitor")) %>% 
+  mutate(bmi_cat3 = as.factor(bmi_cat3),
+         edu_cat = as.factor(edu_cat),
+         race_cat = as.factor(race_cat),
+         male = as.factor(male)) 
+
+data_lasso = study_pop %>% 
+  mutate_at(vars(contains("la")), log) %>% 
+  mutate(log_telomean = log(telomean)) %>% 
+  dplyr::select(log_telomean, lbx074la:lbx187la, lbxd03la:lbx194la, everything(), -seqn, -telomean) %>% 
+  na.omit(log_telomean) %>%
+          rename("PCB 74" = "lbx074la",
+                                "PCB 99" = "lbx099la",
+                                "PCB 118" = "lbx118la",
+                                "PCB 138" = "lbx138la",
+                                "PCB 153" = "lbx153la",
+                                "PCB 170" = "lbx170la",
+                                "PCB 180" = "lbx180la",
+                                "PCB 187" = "lbx187la",
+                                "PCB 194" = "lbx194la",
+                                "1,2,3,6,7,8-hxcdd" = "lbxd03la",
+                                "1,2,3,4,6,7,8-hpcdd" = "lbxd05la",
+                               "1,2,3,4,6,7,8,9-ocdd" =  "lbxd07la",
+                               "2,3,4,7,8-pncdf" =  "lbxf03la",
+                               "1,2,3,4,7,8-hxcdf" =  "lbxf04la",
+                               "1,2,3,6,7,8-hxcdf" =  "lbxf05la",
+                               "1,2,3,4,6,7,8-hxcdf" =  "lbxf08la",
+                               "PCB 169" =  "lbxhxcla",
+                                "PCB 126" = "lbxpcbla")
+
+# Create a matrix of predictors as x
+x = model.matrix(log_telomean ~ ., data_lasso)[,-1]
+
+# Extract outcome vector
+y = data_lasso$log_telomean
+```
+
+
+# Lasso w/ CV
+
+Some built-in functions will conduct a cross-validation analysis and identify the "best" tuning parameter.
+
+```{r}
+set.seed(2)
+# n-folds is set to a default of 10 for cv.glmnet
+cv.out = cv.glmnet(x, y, alpha = 1)
+
+plot(cv.out)
+coef(cv.out)
+
+best_lambda = cv.out$lambda.min
+best_lambda
+
+```
+
+Optional arguments to `glmnet` can be useful -- in particular, `weights` can be used in the context of the adaptive lasso and `penalty.factor` can separate penalized variables from confounders. 
+
+```{r}
+is_penalized = c(rep(1, ncol(x[,1:18])), rep(0, ncol(x[,19:36])))
+
+
+
+# Use cross-validation (CV) to find best lambda value
+cv.lasso = cv.glmnet(x, y, 
+                     penalty.factor = is_penalized,
+                     type.measure = "mse", alpha = 1)
+plot(cv.lasso)
+
+best_lambda = cv.lasso$lambda.min
+best_lambda
+```
+
+Let's examine the model with the best CV score. 
+
+```{r}
+# Lasso model using cross-validated lambda value
+lasso.mod = glmnet(x, y, 
+                   penalty.factor = is_penalized,
+                   alpha = 1, lambda = best_lambda)
+
+coef_lasso = coef(lasso.mod)
+lasso.mod$beta
+
+# Find the number of non-zero estimates
+length(coef_lasso[coef_lasso != 0]) # 23 non-zero estimates including the intercept
+
+# Find variables that are non-zero
+dimnames(coef_lasso)[[1]][which(coef_lasso != 0)]
+
+# Find the MSE
+lasso.pred <-  predict(lasso.mod, newx = x)
+lasso_mse <- mean((lasso.pred - y)^2)
+lasso_mse
+
+#The final code chunk saves the best lasso coefficients for later use. 
+lasso_beta = cbind(rownames(coef_lasso), as.vector(coef_lasso)) %>% 
+  as.tibble() %>% 
+  rename(variable = 1, beta = 2) %>% 
+  mutate(beta = as.numeric(beta)) %>% 
+  filter(variable != "(Intercept)") %>% 
+  mutate(method = "Lasso")
+
+```
+
+
+#functions 
+
+```{r}
+fit_with_cv = function(seed) {
+  set.seed(seed)
+  cv.lasso = cv.glmnet(x, y, 
+                     penalty.factor = c(rep(1, ncol(x[,1:18])), rep(0, ncol(x[,19:36]))),
+                     type.measure = "mse", alpha = 1)
+  
+  #Find the lambda that results in the smallest CV error
+  best_lambda = cv.lasso$lambda.min
+  
+  #Fit model with cross-validated lambda
+  lasso.mod = glmnet(x, y, 
+                   penalty.factor = c(rep(1, ncol(x[,1:18])), rep(0, ncol(x[,19:36]))),
+                   alpha = 1, lambda = best_lambda)
+  
+lasso.mod
+}
+
+
+extract_coefs = function(fit) {
+ as.tibble(as.matrix(fit$beta), rownames = "variable") %>%
+    rename(beta = s0) 
+}
+
+```
+
+
+##loop over seeds
+```{r}
+repeat_cv = 
+  tibble(seed = 1:100) %>% 
+  mutate(
+    fits = map(seed, ~fit_with_cv(seed = .x)),
+    coefs = map(fits, extract_coefs)) %>% 
+  dplyr::select(-fits) %>% 
+  unnest()
+  
+repeat_cv %>% 
+  ggplot(aes(x = seed, y = beta)) + geom_point() + 
+  facet_wrap(~variable)
+```
+
+
+
+
+
