@@ -1,0 +1,198 @@
+---
+title: Random Seed Group Lasso Cross-Validation
+author: Lizzy Gibson
+output: 
+  html_document:
+    toc: TRUE
+    toc_float: TRUE
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(viridis)
+library(grpreg)
+library(janitor)
+library(glmnet)
+
+#This turns off scientific notation
+options(scipen = 999)
+
+knitr::opts_chunk$set(
+	echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 8,
+  fig.height = 6
+)
+
+options(
+  ggplot2.continuous.colour = "viridis",
+  ggplot2.continuous.fill = "viridis"
+)
+
+scale_colour_discrete = scale_colour_viridis_d
+scale_fill_discrete = scale_fill_viridis_d
+
+theme_set(theme_minimal() + theme(legend.position = "bottom"))
+```
+
+## Data Import 
+
+First, load the dataset; clean up names as needed; and convert factors to, well, factors. 
+
+```{r}
+study_pop = read_csv("Data/studypop.csv") %>% 
+  clean_names(case = c("old_janitor")) %>% 
+  mutate(bmi_cat3 = as.factor(bmi_cat3),
+         edu_cat = as.factor(edu_cat),
+         race_cat = as.factor(race_cat),
+         male = as.factor(male)) 
+
+data_lasso = study_pop %>% 
+  mutate_at(vars(contains("la")), log) %>% 
+  mutate(log_telomean = log(telomean)) %>% 
+  dplyr::select(log_telomean, lbx074la:lbx187la, lbxd03la:lbx194la, everything(), -seqn, -telomean) %>% 
+  na.omit(log_telomean)
+
+data_lasso
+
+# Create a matrix of predictors as x
+x = model.matrix(log_telomean ~ ., data_lasso)[,-1]
+
+# Extract outcome vector
+y = data_lasso$log_telomean
+```
+
+## Group Definitions
+
+Create grouping variable. If there are coefficients to be included in the model without being penalized, assign them to group 0 (or "0"). This includes all covariates we want to keep in the model. Group must be a FACTOR. 
+
+* 3 groups = 
+    * 8 non-Dioxin-like PCBs
+    * 2 non-ortho PCBs
+    * TEQ (3 dioxins, 4 furans, 1 mono-ortho (Dioxin-like) PCBs). 
+
+```{r}
+group3 <- vector()
+group3[grepl("pct", colnames(x))] <- "0"
+group3[grepl("bcsi", colnames(x))] <- "0"
+group3[grepl("bmi", colnames(x))] <- "0"
+group3[grepl("edu", colnames(x))] <- "0"
+group3[grepl("race", colnames(x))] <- "0"
+group3[grepl("male", colnames(x))] <- "0"
+group3[grepl("bxcot", colnames(x))] <- "0"
+group3[grepl("age", colnames(x))] <- "0"
+group3[grepl("lbx1|0",colnames(x))] <- "Non-Dioxin-like PCB"
+group3[grepl("lbxd", colnames(x))] <- "TEQ"
+group3[grepl("lbxf", colnames(x))] <- "TEQ"
+group3[grepl("lbxh|p", colnames(x))] <- "Non-Ortho PCB"
+group3[grepl("lbx118la", colnames(x))] <- "TEQ"
+group3 <- as.factor(group3)
+
+cbind(colnames(x), group3) #bind by columns
+```
+
+## Grouped Variable Selection
+
+```{r models_3}
+lasso_3 <- grpreg(x, y, group3, penalty = "grLasso")
+```
+
+Results are illustrated below. 
+
+```{r}
+plot(lasso_3)
+```
+
+## Lasso w/ CV
+
+As with `glmnet`, we can use CV to choose the tuning parameters. If not specified in code, ten-fold CV is the default. 
+
+We perform this analysis with the three-group model and the lasso penalty.
+
+```{r cvlasso}
+cv_lasso_3 <- cv.grpreg(x, y, group3, 
+                        penalty = "grLasso", seed = 1988)
+
+plot(cv_lasso_3)
+
+cv_lasso_3$cve #cross-validation error
+cv_lasso_3$cvse #std error of CV error
+log(cv_lasso_3$lambda) # log(lambda)
+
+plot(desc(log(cv_lasso_3$lambda)), cv_lasso_3$cve)
+```
+
+```{r}
+#Find the lambda that results in the smallest CV error
+best_lasso_3 <- cv_lasso_3$lambda.min
+
+#Fit model with cross-validated lambda
+fit_lasso_3 <- grpreg(x, y, group3, penalty = "grLasso", lambda = best_lasso_3)
+
+#Look at coefficients from model with best lambda
+fit_lasso_3$beta
+
+##prediction and MSE using train dataset
+grlasso.pred <-  predict(fit_lasso_3, x)
+grlasso_MSE <-  mean((grlasso.pred - y)^2)
+grlasso_MSE
+```
+
+### Data Visualization
+
+```{r vizlasso}
+#3 group model
+lasso_beta_3 <- as_tibble(fit_lasso_3$beta, rownames = "variable") %>% 
+  rename(beta = 2) %>% 
+  filter(variable != "(Intercept)") %>% 
+  mutate(group3 = group3,
+         method = "Grouped Lasso")
+
+#Filter out covariates
+lasso_beta_3 %>% 
+  filter(group3 %in% c("TEQ", "Non-Dioxin-like PCB", "Non-Ortho PCB")) %>% 
+  ggplot(aes(x = variable, y = round(beta, 5))) + 
+  geom_point() + theme_minimal() + geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+  facet_wrap(~ group3, scales = "free_y") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) + coord_flip() + 
+  labs(title = "Lasso Coefficients for 3 Group Model", y = "Beta Coefficient", x = "Variable")
+```
+
+## Loop Over Seeds
+
+```{r}
+fit_with_cv = function(seed) {
+  cv_lasso_loop <- cv.grpreg(x, y, group3, 
+                          penalty = "grLasso", seed = seed)
+  
+  loop_cve   <- cv_lasso_loop$cve  #cross-validation error
+  loop_cvse  <- cv_lasso_loop$cvse #std error of CV error
+  loop_lam <- cv_lasso_loop$lambda 
+  
+  dat <- cbind(lam = loop_lam, cve = loop_cve, cvse = loop_cvse) %>% 
+    as_tibble() %>% 
+    mutate(upper = cve + 1.96*cvse,
+         lower = cve - 1.96*cvse) %>% 
+    mutate(seed = seed)
+}
+
+repeat_cv = 
+  tibble(seed = 1:5) %>%
+  mutate(
+    fits = map(seed, ~fit_with_cv(seed = .x))) %>% 
+  unnest() %>% 
+  mutate(seed = as.factor(seed))
+  
+repeat_cv %>% 
+  ggplot(aes(x = lam, y = cve, color = seed)) + 
+  geom_point() + 
+  geom_line() +
+  geom_errorbar(aes(ymin = lower, ymax = upper))
+
+repeat_cv %>% 
+  ggplot(aes(x = lam, y = cve, color = seed)) + 
+  geom_point() + 
+  geom_line()
+```
+
