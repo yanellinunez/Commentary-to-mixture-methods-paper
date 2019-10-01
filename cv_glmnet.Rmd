@@ -39,7 +39,7 @@ data_lasso = study_pop %>%
   mutate(log_telomean = log(telomean)) %>% 
   dplyr::select(log_telomean, lbx074la:lbx187la, lbxd03la:lbx194la, everything(), -seqn, -telomean) %>% 
   na.omit(log_telomean) %>%
-          rename("PCB 74" = "lbx074la",
+          rename('PCB 74' = "lbx074la",
                                 "PCB 99" = "lbx099la",
                                 "PCB 118" = "lbx118la",
                                 "PCB 138" = "lbx138la",
@@ -121,7 +121,7 @@ lasso_beta = cbind(rownames(coef_lasso), as.vector(coef_lasso)) %>%
 
 #functions for looping seeds for lasso
 ```{r}
-fit_with_cv = function(seed) {
+fit_cv_lasso = function(seed) {
   set.seed(seed)
   cv.lasso = cv.glmnet(x, y, 
                      penalty.factor = c(rep(1, ncol(x[,1:18])), rep(0, ncol(x[,19:36]))),
@@ -147,20 +147,17 @@ extract_coefs = function(fit) {
 ```
 
 
-##loop over seeds for lasso
+## lasso beta values for different seeds
 ```{r}
-repeat_cv = 
+repeat_cv_lasso = 
   tibble(seed = 1:100) %>% 
   mutate(
-    fits = map(seed, ~fit_with_cv(seed = .x)),
+    fits = map(seed, ~fit_cv_lasso(seed = .x)),
     coefs = map(fits, extract_coefs)) %>% 
   dplyr::select(-fits) %>% 
-  unnest()
+  unnest() %>%
+  rename(beta_lasso = "beta") 
   
-repeat_cv %>% 
-  ggplot(aes(x = seed, y = beta)) + geom_point(size = 0.5) + 
-  facet_wrap(~variable) +
-  ggtitle("Lasso beta values for different seeds")
 ```
 
 
@@ -198,13 +195,6 @@ best_alpha = elnetFit$bestTune$alpha
 For the optimal `alpha` value, we identify a best lambda and explore the results. 
 
 ```{r elnet}
-elnet = glmnet(x, y, 
-               penalty.factor = is_penalized,
-               alpha = best_alpha)
-plot(elnet)
-
-
-# For reproducibility, set a seed
 set.seed(2)
 
 # Use CV to find best lambda value
@@ -233,4 +223,58 @@ dimnames(coef_elnet)[[1]][which(coef_elnet != 0)]
 elnet.pred <-  predict(elnet.mod, newx = x)
 elnet_mse <- mean((elnet.pred - y)^2)
 elnet_mse
+```
+
+
+#function for looping seeds for elastic net
+```{r}
+fit_cv_elnet = function(seed) {
+  set.seed(seed)
+  cv.elnet = cv.glmnet(x, y, 
+                     penalty.factor = c(rep(1, ncol(x[,1:18])), rep(0, ncol(x[,19:36]))),
+                     type.measure = "mse", alpha = 0.1)
+  
+  #Find the lambda that results in the smallest CV error
+  best_lambda = cv.elnet$lambda.min
+  
+  #Fit model with cross-validated lambda
+  elnet.mod = glmnet(x, y, 
+                   penalty.factor = c(rep(1, ncol(x[,1:18])), rep(0, ncol(x[,19:36]))),
+                   alpha = 0.1, lambda = best_lambda)
+  
+elnet.mod
+}
+
+```
+
+# Elastic net beta values for different seeds
+```{r}
+repeat_cv_elnet = 
+  tibble(seed = 1:100) %>% 
+  mutate(
+    fits = map(seed, ~fit_cv_elnet(seed = .x)),
+    coefs = map(fits, extract_coefs)) %>% 
+  dplyr::select(-fits) %>% 
+  unnest() %>%
+  rename(beta_elnet = "beta")
+```
+
+#combined elastic net and lasso data sets
+```{r}
+betas_lasso_elnet <- full_join(repeat_cv_elnet, repeat_cv_lasso, by = c("variable", "seed"))
+```
+
+
+```{r}
+betas_plot <- betas_lasso_elnet %>%
+  ggplot() + 
+  geom_point(aes(x = seed, y = beta_lasso, color = 'red'), size = 0.5) + 
+  geom_point(aes(x = seed, y = beta_elnet, color = 'blue'), size = 0.5, alpha = 0.5) +
+  facet_wrap(~variable) +
+  ggtitle("Beta values for different seeds") +
+  labs(y = "beta") +
+  scale_colour_manual(name = "", 
+         values =c('blue'='blue','red'='red'), labels = c('Elastic Net','Lasso'))
+betas_plot
+```
 
