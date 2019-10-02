@@ -6,20 +6,18 @@ output:
   html_document:
     toc: TRUE
     toc_float: TRUE
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-#install.packages("tidyverse")
 library(tidyverse)
-#install.packages("janitor")
 library(janitor)
-#install.packages("caret")
 library(caret)
-#install.packages("Hmisc")
 library(Hmisc)
-#install.packages("glmnet")
 library(glmnet)
+library(grpreg)
 ```
 
 # Data Import and Cleaning 
@@ -34,29 +32,11 @@ study_pop = read_csv("Data/studypop.csv") %>%
          race_cat = as.factor(race_cat),
          male = as.factor(male)) 
 
-data_lasso = study_pop %>% 
+data = study_pop %>% 
   mutate_at(vars(contains("la")), log) %>% 
   mutate(log_telomean = log(telomean)) %>% 
   dplyr::select(log_telomean, lbx074la:lbx187la, lbxd03la:lbx194la, everything(), -seqn, -telomean) %>% 
-  na.omit(log_telomean) %>%
-          rename('PCB 74' = "lbx074la",
-                                "PCB 99" = "lbx099la",
-                                "PCB 118" = "lbx118la",
-                                "PCB 138" = "lbx138la",
-                                "PCB 153" = "lbx153la",
-                                "PCB 170" = "lbx170la",
-                                "PCB 180" = "lbx180la",
-                                "PCB 187" = "lbx187la",
-                                "PCB 194" = "lbx194la",
-                                "1,2,3,6,7,8-hxcdd" = "lbxd03la",
-                                "1,2,3,4,6,7,8-hpcdd" = "lbxd05la",
-                               "1,2,3,4,6,7,8,9-ocdd" =  "lbxd07la",
-                               "2,3,4,7,8-pncdf" =  "lbxf03la",
-                               "1,2,3,4,7,8-hxcdf" =  "lbxf04la",
-                               "1,2,3,6,7,8-hxcdf" =  "lbxf05la",
-                               "1,2,3,4,6,7,8-hxcdf" =  "lbxf08la",
-                               "PCB 169" =  "lbxhxcla",
-                                "PCB 126" = "lbxpcbla")
+  na.omit(log_telomean) 
 
 # Create a matrix of predictors as x
 x = model.matrix(log_telomean ~ ., data_lasso)[,-1]
@@ -64,6 +44,29 @@ x = model.matrix(log_telomean ~ ., data_lasso)[,-1]
 # Extract outcome vector
 y = data_lasso$log_telomean
 ```
+
+#Variable grouping for group lasso
+```{r}
+
+group3 <- vector()
+group3[grepl("pct", colnames(x))] <- "0"
+group3[grepl("bcsi", colnames(x))] <- "0"
+group3[grepl("bmi", colnames(x))] <- "0"
+group3[grepl("edu", colnames(x))] <- "0"
+group3[grepl("race", colnames(x))] <- "0"
+group3[grepl("male", colnames(x))] <- "0"
+group3[grepl("bxcot", colnames(x))] <- "0"
+group3[grepl("age", colnames(x))] <- "0"
+group3[grepl("lbx1|0",colnames(x))] <- "Non-Dioxin-like PCB"
+group3[grepl("lbxd", colnames(x))] <- "TEQ"
+group3[grepl("lbxf", colnames(x))] <- "TEQ"
+group3[grepl("lbxh|p", colnames(x))] <- "Non-Ortho PCB"
+group3[grepl("lbx118la", colnames(x))] <- "TEQ"
+group3 <- as.factor(group3)
+
+cbind(colnames(x), group3) #bind by columns
+```
+
 
 
 # Lasso w/ CV
@@ -259,22 +262,108 @@ repeat_cv_elnet =
   rename(beta_elnet = "beta")
 ```
 
-#combined elastic net and lasso data sets
+#Group lasso
+
+Functions
 ```{r}
-betas_lasso_elnet <- full_join(repeat_cv_elnet, repeat_cv_lasso, by = c("variable", "seed"))
+fit_with_cv = function(seed) {
+  cv_lasso_3 <- cv.grpreg(x, y, group3, 
+                          penalty = "grLasso", seed = seed)
+  
+  #Find the lambda that results in the smallest CV error
+  best_lasso_3 <- cv_lasso_3$lambda.min
+  
+  #Fit model with cross-validated lambda
+  fit_lasso_3 <- grpreg(x, y, group3, penalty = "grLasso", lambda = best_lasso_3)
+  
+  fit_lasso_3
+}
+
+extract_coefs_grlasso = function(fit) {
+  as_tibble(fit$beta, rownames = "variable") %>% 
+    rename(beta = 2) %>% 
+    filter(variable != "(Intercept)")  %>% 
+    mutate(group3 = group3) %>% 
+    filter(group3 %in% c("TEQ", "Non-Dioxin-like PCB", "Non-Ortho PCB"))
+}
+```
+
+Looping for different seeds for group lasso
+```{r}
+repeat_cv_group_lasso = 
+  tibble(seed = 1:100) %>% 
+  mutate(
+    fits = map(seed, ~fit_with_cv(seed = .x)),
+    coefs = map(fits, extract_coefs_grlasso)) %>% 
+  dplyr::select(-fits) %>% 
+  unnest() %>%
+  rename(beta_grlasso = "beta")
+  
+
 ```
 
 
+#combined elastic net and lasso data sets
 ```{r}
-betas_plot <- betas_lasso_elnet %>%
+betas <- full_join(repeat_cv_elnet, repeat_cv_lasso, by = c("variable", "seed")) %>%
+  full_join(., repeat_cv_group_lasso, by = c("variable", "seed")) 
+          
+```
+                            
+                            rename('PCB 74' = "lbx074la",
+                                "PCB 99" = "lbx099la",
+                                "PCB 118" = "lbx118la",
+                                "PCB 138" = "lbx138la",
+                                "PCB 153" = "lbx153la",
+                                "PCB 170" = "lbx170la",
+                                "PCB 180" = "lbx180la",
+                                "PCB 187" = "lbx187la",
+                                "PCB 194" = "lbx194la",
+                                "1,2,3,6,7,8-hxcdd" = "lbxd03la",
+                                "1,2,3,4,6,7,8-hpcdd" = "lbxd05la",
+                               "1,2,3,4,6,7,8,9-ocdd" =  "lbxd07la",
+                               "2,3,4,7,8-pncdf" =  "lbxf03la",
+                               "1,2,3,4,7,8-hxcdf" =  "lbxf04la",
+                               "1,2,3,6,7,8-hxcdf" =  "lbxf05la",
+                               "1,2,3,4,6,7,8-hxcdf" =  "lbxf08la",
+                               "PCB 169" =  "lbxhxcla",
+                                "PCB 126" = "lbxpcbla")
+
+#Combined plot 
+
+```{r}
+betas_plot <- betas %>%
   ggplot() + 
-  geom_point(aes(x = seed, y = beta_lasso, color = 'red'), size = 0.5) + 
-  geom_point(aes(x = seed, y = beta_elnet, color = 'blue'), size = 0.5, alpha = 0.5) +
+  geom_point(aes(x = seed, y = beta_lasso, color = 'red'), size = 0.5, alpha = 0.7) + 
+  geom_point(aes(x = seed, y = beta_elnet, color = 'blue'), size = 0.5, alpha = 0.4) +
+  geom_point(aes(x = seed, y = beta_grlasso, color = 'dark green'), size = 0.5, alpha = 0.5) +
   facet_wrap(~variable) +
   ggtitle("Beta values for different seeds") +
   labs(y = "beta") +
   scale_colour_manual(name = "", 
-         values =c('blue'='blue','red'='red'), labels = c('Elastic Net','Lasso'))
+        values =c('blue'='blue','red'='red', 'dark green' = 'dark green'), labels = c('Elastic Net','Lasso', 'group Lasso'))
 betas_plot
+```
+
+
+#Individual plots
+```{r}
+betas_lasso <- betas %>%
+  ggplot() + 
+  geom_point(aes(x = seed, y = beta_lasso), color = 'red', size = 0.5, alpha = 0.7) + 
+  facet_wrap(~variable)
+betas_lasso
+
+betas_elnet <- betas %>%
+  ggplot() + 
+  geom_point(aes(x = seed, y = beta_elnet), color = 'blue', size = 0.5, alpha = 0.4) + 
+  facet_wrap(~variable)
+betas_elnet
+
+betas_grplasso <- betas %>%
+  ggplot() + 
+  geom_point(aes(x = seed, y = beta_grlasso), color = 'dark green', size = 0.5, alpha = 0.5) + 
+  facet_wrap(~variable)
+betas_grplasso
 ```
 
