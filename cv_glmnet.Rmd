@@ -39,16 +39,21 @@ data = study_pop %>%
   na.omit(log_telomean) 
 
 # Create a matrix of predictors as x
-x = model.matrix(log_telomean ~ ., data_lasso)[,-1]
+x = model.matrix(log_telomean ~ ., data)[,-1]
 
 # Extract outcome vector
-y = data_lasso$log_telomean
+y = data$log_telomean
 ```
 
 #Variable grouping for group lasso
 ```{r}
 
 group3 <- vector()
+group3[grepl("lbx1|0",colnames(x))] <- "Non-Dioxin-like PCB"
+group3[grepl("lbxd", colnames(x))] <- "TEQ"
+group3[grepl("lbxf", colnames(x))] <- "TEQ"
+group3[grepl("lbxh|p", colnames(x))] <- "Non-Ortho PCB"
+group3[grepl("lbx118la", colnames(x))] <- "TEQ"
 group3[grepl("pct", colnames(x))] <- "0"
 group3[grepl("bcsi", colnames(x))] <- "0"
 group3[grepl("bmi", colnames(x))] <- "0"
@@ -57,16 +62,10 @@ group3[grepl("race", colnames(x))] <- "0"
 group3[grepl("male", colnames(x))] <- "0"
 group3[grepl("bxcot", colnames(x))] <- "0"
 group3[grepl("age", colnames(x))] <- "0"
-group3[grepl("lbx1|0",colnames(x))] <- "Non-Dioxin-like PCB"
-group3[grepl("lbxd", colnames(x))] <- "TEQ"
-group3[grepl("lbxf", colnames(x))] <- "TEQ"
-group3[grepl("lbxh|p", colnames(x))] <- "Non-Ortho PCB"
-group3[grepl("lbx118la", colnames(x))] <- "TEQ"
 group3 <- as.factor(group3)
 
 cbind(colnames(x), group3) #bind by columns
 ```
-
 
 
 # Lasso w/ CV
@@ -162,7 +161,6 @@ repeat_cv_lasso =
   rename(beta_lasso = "beta") 
   
 ```
-
 
 
 # Elastic Net w/ CV
@@ -263,6 +261,7 @@ repeat_cv_elnet =
 ```
 
 #Group lasso
+
 
 Functions
 ```{r}
@@ -365,5 +364,11 @@ betas_grplasso <- betas %>%
   geom_point(aes(x = seed, y = beta_grlasso), color = 'dark green', size = 0.5, alpha = 0.5) + 
   facet_wrap(~variable)
 betas_grplasso
+```
+
+Note: R is version: 3.6.1
+glmnet and grpreg package are the older versions
+```{r}
+sessionInfo()
 ```
 
