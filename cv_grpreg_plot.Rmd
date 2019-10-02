@@ -92,7 +92,7 @@ group3 <- as.factor(group3)
 cbind(colnames(x), group3) #bind by columns
 ```
 
-## Grouped Variable Selection
+## Grouped Lasso
 
 ```{r models_3}
 lasso_3 <- grpreg(x, y, group3, penalty = "grLasso")
@@ -104,7 +104,7 @@ Results are illustrated below.
 plot(lasso_3)
 ```
 
-## Lasso w/ CV
+### Cross-Validation
 
 As with `glmnet`, we can use CV to choose the tuning parameters. If not specified in code, ten-fold CV is the default. 
 
@@ -142,7 +142,6 @@ grlasso_MSE
 ### Data Visualization
 
 ```{r vizlasso}
-#3 group model
 lasso_beta_3 <- as_tibble(fit_lasso_3$beta, rownames = "variable") %>% 
   rename(beta = 2) %>% 
   filter(variable != "(Intercept)") %>% 
@@ -151,7 +150,7 @@ lasso_beta_3 <- as_tibble(fit_lasso_3$beta, rownames = "variable") %>%
 
 #Filter out covariates
 lasso_beta_3 %>% 
-  filter(group3 %in% c("TEQ", "Non-Dioxin-like PCB", "Non-Ortho PCB")) %>% 
+  filter(group3 != 0) %>%
   ggplot(aes(x = variable, y = round(beta, 5))) + 
   geom_point() + theme_minimal() + geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
   facet_wrap(~ group3, scales = "free_y") +
@@ -178,21 +177,48 @@ fit_with_cv = function(seed) {
 }
 
 repeat_cv = 
-  tibble(seed = 1:5) %>%
+  tibble(seed = 1:100) %>%
   mutate(
     fits = map(seed, ~fit_with_cv(seed = .x))) %>% 
   unnest() %>% 
   mutate(seed = as.factor(seed))
-  
+```
+
+### Data Visualization
+
+#### With Error Bars
+```{r}
 repeat_cv %>% 
   ggplot(aes(x = lam, y = cve, color = seed)) + 
   geom_point() + 
   geom_line() +
-  geom_errorbar(aes(ymin = lower, ymax = upper))
+  geom_errorbar(aes(ymin = lower, ymax = upper)) +
+  theme(legend.position = "none") +
+  labs(x = expression(lambda), y = "Cross-Validation Error")
+```
 
+#### Without Error Bars
+```{r}
 repeat_cv %>% 
   ggplot(aes(x = lam, y = cve, color = seed)) + 
   geom_point() + 
-  geom_line()
+  geom_line() +
+  theme(legend.position = "none") +
+  labs(x = expression(lambda), y = "Cross-Validation Error")
+```
+
+#### Selected \lambda
+
+```{r}
+min_cv <- repeat_cv %>% 
+  group_by(seed) %>% 
+  filter(cve == min(cve))
+
+min_cv %>% 
+  ggplot(aes(y = lam, x = seed)) + 
+  geom_point(aes(color = lam)) + 
+  theme(legend.position = "none",
+        axis.text.x = element_text(angle = 90)) +
+  labs(x = "seed", y = expression("Cross-Validation Selected "*lambda))
 ```
 
