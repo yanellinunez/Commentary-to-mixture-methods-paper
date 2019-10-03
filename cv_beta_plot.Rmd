@@ -45,29 +45,6 @@ x = model.matrix(log_telomean ~ ., data)[,-1]
 y = data$log_telomean
 ```
 
-#Variable grouping for group lasso
-```{r}
-
-group3 <- vector()
-group3[grepl("lbx1|0",colnames(x))] <- "Non-Dioxin-like PCB"
-group3[grepl("lbxd", colnames(x))] <- "TEQ"
-group3[grepl("lbxf", colnames(x))] <- "TEQ"
-group3[grepl("lbxh|p", colnames(x))] <- "Non-Ortho PCB"
-group3[grepl("lbx118la", colnames(x))] <- "TEQ"
-group3[grepl("pct", colnames(x))] <- "0"
-group3[grepl("bcsi", colnames(x))] <- "0"
-group3[grepl("bmi", colnames(x))] <- "0"
-group3[grepl("edu", colnames(x))] <- "0"
-group3[grepl("race", colnames(x))] <- "0"
-group3[grepl("male", colnames(x))] <- "0"
-group3[grepl("bxcot", colnames(x))] <- "0"
-group3[grepl("age", colnames(x))] <- "0"
-group3 <- as.factor(group3)
-
-cbind(colnames(x), group3) #bind by columns
-```
-
-
 # Lasso w/ CV
 
 Some built-in functions will conduct a cross-validation analysis and identify the "best" tuning parameter.
@@ -262,6 +239,36 @@ repeat_cv_elnet =
 
 #Group lasso
 
+Variable grouping for group lasso
+
+```{r}
+group3 <- vector()
+group3[grepl("lbx1|0",colnames(x))] <- "Non-Dioxin-like PCB"
+group3[grepl("lbxd", colnames(x))] <- "TEQ"
+group3[grepl("lbxf", colnames(x))] <- "TEQ"
+group3[grepl("lbxh|p", colnames(x))] <- "Non-Ortho PCB"
+group3[grepl("lbx118la", colnames(x))] <- "TEQ"
+group3[grepl("pct", colnames(x))] <- "0"
+group3[grepl("bcsi", colnames(x))] <- "0"
+group3[grepl("bmi", colnames(x))] <- "0"
+group3[grepl("edu", colnames(x))] <- "0"
+group3[grepl("race", colnames(x))] <- "0"
+group3[grepl("male", colnames(x))] <- "0"
+group3[grepl("bxcot", colnames(x))] <- "0"
+group3[grepl("age", colnames(x))] <- "0"
+group3 <- as.factor(group3)
+
+cbind(colnames(x), group3) #bind by columns
+```
+
+This doesn't work when we have the right grouping 
+```{r}
+cv_lasso_3 <- cv.grpreg(x, y, group3, 
+                        penalty = "grLasso", seed = 1988)
+
+plot(cv_lasso_3)
+```
+
 
 Functions
 ```{r}
@@ -302,32 +309,13 @@ repeat_cv_group_lasso =
 ```
 
 
-#combined elastic net and lasso data sets
+#combined data sets for plotting
 ```{r}
 betas <- full_join(repeat_cv_elnet, repeat_cv_lasso, by = c("variable", "seed")) %>%
   full_join(., repeat_cv_group_lasso, by = c("variable", "seed")) 
           
 ```
                             
-                            rename('PCB 74' = "lbx074la",
-                                "PCB 99" = "lbx099la",
-                                "PCB 118" = "lbx118la",
-                                "PCB 138" = "lbx138la",
-                                "PCB 153" = "lbx153la",
-                                "PCB 170" = "lbx170la",
-                                "PCB 180" = "lbx180la",
-                                "PCB 187" = "lbx187la",
-                                "PCB 194" = "lbx194la",
-                                "1,2,3,6,7,8-hxcdd" = "lbxd03la",
-                                "1,2,3,4,6,7,8-hpcdd" = "lbxd05la",
-                               "1,2,3,4,6,7,8,9-ocdd" =  "lbxd07la",
-                               "2,3,4,7,8-pncdf" =  "lbxf03la",
-                               "1,2,3,4,7,8-hxcdf" =  "lbxf04la",
-                               "1,2,3,6,7,8-hxcdf" =  "lbxf05la",
-                               "1,2,3,4,6,7,8-hxcdf" =  "lbxf08la",
-                               "PCB 169" =  "lbxhxcla",
-                                "PCB 126" = "lbxpcbla")
-
 #Combined plot 
 
 ```{r}
@@ -359,6 +347,7 @@ betas_elnet <- betas %>%
   facet_wrap(~variable)
 betas_elnet
 
+#inconsistend coefficients when looping the seed
 betas_grplasso <- betas %>%
   ggplot() + 
   geom_point(aes(x = seed, y = beta_grlasso), color = 'dark green', size = 0.5, alpha = 0.5) + 
