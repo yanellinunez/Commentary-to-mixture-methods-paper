@@ -10,6 +10,9 @@ editor_options:
   chunk_output_type: console
 ---
 
+-If I give you seed 3 I get a full range and if I give you seed 1 I get a single point. 
+-Do group lasso with single element groupings and see if we can replicate lasso
+-what is the vector matrix structure that we suppose to use for grp lasso 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
