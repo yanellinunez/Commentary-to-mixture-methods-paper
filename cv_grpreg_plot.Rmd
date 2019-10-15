@@ -17,23 +17,7 @@ library(glmnet)
 #This turns off scientific notation
 options(scipen = 999)
 
-knitr::opts_chunk$set(
-	echo = FALSE,
-  warning = FALSE,
-  message = FALSE,
-  fig.width = 8,
-  fig.height = 6
-)
-
-options(
-  ggplot2.continuous.colour = "viridis",
-  ggplot2.continuous.fill = "viridis"
-)
-
-scale_colour_discrete = scale_colour_viridis_d
-scale_fill_discrete = scale_fill_viridis_d
-
-theme_set(theme_minimal() + theme(legend.position = "bottom"))
+sessionInfo()
 ```
 
 ## Data Import 
@@ -74,6 +58,11 @@ Create grouping variable. If there are coefficients to be included in the model 
 
 ```{r}
 group3 <- vector()
+group3[grepl("lbx1|0",colnames(x))] <- "Non-Dioxin-like PCB"
+group3[grepl("lbxd", colnames(x))] <- "TEQ"
+group3[grepl("lbxf", colnames(x))] <- "TEQ"
+group3[grepl("lbxh|p", colnames(x))] <- "Non-Ortho PCB"
+group3[grepl("lbx118la", colnames(x))] <- "TEQ"
 group3[grepl("pct", colnames(x))] <- "0"
 group3[grepl("bcsi", colnames(x))] <- "0"
 group3[grepl("bmi", colnames(x))] <- "0"
@@ -82,29 +71,12 @@ group3[grepl("race", colnames(x))] <- "0"
 group3[grepl("male", colnames(x))] <- "0"
 group3[grepl("bxcot", colnames(x))] <- "0"
 group3[grepl("age", colnames(x))] <- "0"
-group3[grepl("lbx1|0",colnames(x))] <- "Non-Dioxin-like PCB"
-group3[grepl("lbxd", colnames(x))] <- "TEQ"
-group3[grepl("lbxf", colnames(x))] <- "TEQ"
-group3[grepl("lbxh|p", colnames(x))] <- "Non-Ortho PCB"
-group3[grepl("lbx118la", colnames(x))] <- "TEQ"
 group3 <- as.factor(group3)
 
 cbind(colnames(x), group3) #bind by columns
 ```
 
-## Grouped Lasso
-
-```{r models_3}
-lasso_3 <- grpreg(x, y, group3, penalty = "grLasso")
-```
-
-Results are illustrated below. 
-
-```{r}
-plot(lasso_3)
-```
-
-### Cross-Validation
+## Lasso w/ CV
 
 As with `glmnet`, we can use CV to choose the tuning parameters. If not specified in code, ten-fold CV is the default. 
 
@@ -142,6 +114,7 @@ grlasso_MSE
 ### Data Visualization
 
 ```{r vizlasso}
+#3 group model
 lasso_beta_3 <- as_tibble(fit_lasso_3$beta, rownames = "variable") %>% 
   rename(beta = 2) %>% 
   filter(variable != "(Intercept)") %>% 
@@ -150,7 +123,7 @@ lasso_beta_3 <- as_tibble(fit_lasso_3$beta, rownames = "variable") %>%
 
 #Filter out covariates
 lasso_beta_3 %>% 
-  filter(group3 != 0) %>%
+  filter(group3 %in% c("TEQ", "Non-Dioxin-like PCB", "Non-Ortho PCB")) %>% 
   ggplot(aes(x = variable, y = round(beta, 5))) + 
   geom_point() + theme_minimal() + geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
   facet_wrap(~ group3, scales = "free_y") +
@@ -173,7 +146,7 @@ fit_with_cv = function(seed) {
     as_tibble() %>% 
     mutate(upper = cve + 1.96*cvse,
          lower = cve - 1.96*cvse) %>% 
-    mutate(seed = seed)
+    mutate(seed1 = seed)
 }
 
 repeat_cv = 
