@@ -68,38 +68,6 @@ best_lambda = cv.lasso$lambda.min
 best_lambda
 ```
 
-Let's examine the model with the best CV score. 
-
-```{r}
-# Lasso model using cross-validated lambda value
-lasso.mod = glmnet(x, y, 
-                   penalty.factor = is_penalized,
-                   alpha = 1, lambda = best_lambda)
-
-coef_lasso = coef(lasso.mod)
-lasso.mod$beta
-
-# Find the number of non-zero estimates
-length(coef_lasso[coef_lasso != 0]) # 23 non-zero estimates including the intercept
-
-# Find variables that are non-zero
-dimnames(coef_lasso)[[1]][which(coef_lasso != 0)]
-
-# Find the MSE
-lasso.pred <-  predict(lasso.mod, newx = x)
-lasso_mse <- mean((lasso.pred - y)^2)
-lasso_mse
-
-#The final code chunk saves the best lasso coefficients for later use. 
-lasso_beta = cbind(rownames(coef_lasso), as.vector(coef_lasso)) %>% 
-  as.tibble() %>% 
-  rename(variable = 1, beta = 2) %>% 
-  mutate(beta = as.numeric(beta)) %>% 
-  filter(variable != "(Intercept)") %>% 
-  mutate(method = "Lasso")
-
-```
-
 
 #functions for looping seeds for lasso
 ```{r}
@@ -194,16 +162,6 @@ elnet.mod = glmnet(x, y,
 coef_elnet = coef(elnet.mod)
 coef_elnet
 
-# Find the number of non-zero estimates
-length(coef_elnet[coef_elnet != 0]) # 24 non-zero estimates including the intercept
-
-# Find variables that are non-zero
-dimnames(coef_elnet)[[1]][which(coef_elnet != 0)]
-
-# Find the MSE
-elnet.pred <-  predict(elnet.mod, newx = x)
-elnet_mse <- mean((elnet.pred - y)^2)
-elnet_mse
 ```
 
 
@@ -262,7 +220,11 @@ group3[grepl("age", colnames(x))] <- "0"
 group3 <- as.factor(group3)
 
 cbind(colnames(x), group3) #bind by columns
+
+
+
 ```
+
 
 This doesn't work when we have the right grouping 
 ```{r}
