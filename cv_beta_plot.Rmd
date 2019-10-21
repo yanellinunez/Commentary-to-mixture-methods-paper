@@ -184,7 +184,7 @@ repeat_cv_lasso_2 %>%
 ```
 
 
-### Selected \lambda
+### Selected lambda
 ```{r}
 min_cv <- repeat_cv_lasso_2 %>% 
   group_by(seed) %>% 

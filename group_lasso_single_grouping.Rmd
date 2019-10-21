@@ -58,7 +58,7 @@ y = data$log_telomean
 
 # Group lasso
 
-## Variable grouping for group lasso
+### Variable grouping for group lasso
 
 ```{r}
 group3 <- vector()
@@ -95,7 +95,7 @@ cbind(colnames(x), group3) #bind by columns
 ```
 
 
-## Group Lasso w/ CV
+### Group Lasso w/ CV
 
 As with `glmnet`, we can use CV to choose the tuning parameters. If not specified in code, ten-fold CV is the default. 
 
@@ -115,7 +115,7 @@ plot(desc(log(cv_single_lasso_3$lambda)), cv_single_lasso_3$cve)
 ```
 
 
-## Loop Over Seeds
+### Loop Over Seeds
 
 ```{r}
 fit_with_cv = function(seed) {
@@ -144,7 +144,7 @@ repeat_cv =
 
 # Data Visualization
 
-## With Error Bars
+### With Error Bars
 ```{r}
 repeat_cv %>% 
   ggplot(aes(x = lam, y = cve, color = seed)) + 
@@ -155,7 +155,7 @@ repeat_cv %>%
   labs(x = expression(lambda), y = "Cross-Validation Error")
 ```
 
-## Without Error Bars
+### Without Error Bars
 ```{r}
 repeat_cv %>% 
   ggplot(aes(x = lam, y = cve, color = seed)) + 
@@ -165,7 +165,7 @@ repeat_cv %>%
   labs(x = expression(lambda), y = "Cross-Validation Error")
 ```
 
-## Selected \lambda
+### Selected \lambda
 
 ```{r}
 min_cv <- repeat_cv %>% 
