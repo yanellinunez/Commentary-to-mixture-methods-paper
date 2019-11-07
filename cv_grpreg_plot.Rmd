@@ -24,6 +24,8 @@ knitr::opts_chunk$set(
 )
 
 theme_set(theme_minimal() + theme(legend.position = "bottom"))
+require(devtools)
+session_info()
 ```
 
 ## Data Import 
@@ -179,14 +181,15 @@ repeat_cv =
 
 #### Without Error Bars
 ```{r}
-#pdf("new_r_new_package_cv_curves.pdf")
+#pdf("./Figures/new_r_new_package_cv_curves.pdf")
 repeat_cv %>% 
   mutate(seed = as.factor(seed)) %>% 
   ggplot(aes(x = lam, y = cve, color = seed)) + 
   geom_point() + 
   geom_line() +
   theme(legend.position = "none") +
-  labs(x = expression(lambda), y = "Cross-Validation Error")
+  labs(title = "R 3.6.0 -- grpreg 3.2-1",
+       x = expression(lambda), y = "Cross-Validation Error")
 #dev.off()
 ```
 
@@ -197,13 +200,14 @@ min_cv <- repeat_cv %>%
   group_by(seed) %>% 
   filter(cve == min(cve))
 
-#pdf("new_r_new_package_cv_lam.pdf")
+#pdf("./Figures/new_r_new_package_cv_lam.pdf")
 min_cv %>% 
   ggplot(aes(y = lam, x = seed)) + 
   geom_point(aes(color = lam)) + 
   theme(legend.position = "none",
         axis.text.x = element_text(angle = 90)) +
-  labs(x = "Seed", y = expression("Cross-Validation Selected "*lambda))
+  labs(title = "R 3.6.0 -- grpreg 3.2-1",
+       x = "Seed", y = expression("Cross-Validation Selected "*lambda))
 #dev.off()
 ```
 
