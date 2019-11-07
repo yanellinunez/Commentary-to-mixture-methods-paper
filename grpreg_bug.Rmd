@@ -1,0 +1,143 @@
+---
+title: "Grpreg Bug Example"
+author: "Lizzy Gibson"
+date: "10/9/2019"
+output: 
+  html_document:
+    toc: TRUE
+    toc_float: TRUE
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(grpreg)
+library(janitor)
+```
+
+# Reproducible Example
+
+## Load Data
+```{r}
+data_lasso = read_csv("Data/studypop.csv") %>% 
+  clean_names(case = c("old_janitor")) %>% 
+  mutate(bmi_cat3 = as.factor(bmi_cat3),
+         edu_cat = as.factor(edu_cat),
+         race_cat = as.factor(race_cat),
+         male = as.factor(male)) %>% 
+  mutate_at(vars(contains("la")), log) %>% 
+  mutate(log_telomean = log(telomean)) %>% 
+  dplyr::select(log_telomean, lbx074la:lbx187la, lbxd03la:lbx194la, everything(), -seqn, -telomean) %>% 
+  na.omit(log_telomean)
+
+# Create a matrix of predictors as x
+x = model.matrix(log_telomean ~ ., data_lasso)[,-1]
+
+# Extract outcome vector
+y = data_lasso$log_telomean
+```
+
+## Create Groups
+
+If there are coefficients to be included in the model without being penalized, assign them to group 0 (or "0"). 
+
+4 groups = 
+    * 8 non-Dioxin-like PCBs
+    * 2 non-ortho PCBs
+    * TEQ (3 dioxins, 4 furans, 1 mono-ortho (Dioxin-like) PCBs)
+    * 18 covariates
+
+```{r}
+groups_1 <- vector()
+groups_1[grepl("lbx1|0",colnames(x))] <- "Non-Dioxin-like PCB"
+groups_1[grepl("lbxd", colnames(x))] <- "TEQ"
+groups_1[grepl("lbxf", colnames(x))] <- "TEQ"
+groups_1[grepl("lbxh|p", colnames(x))] <- "Non-Ortho PCB"
+groups_1[grepl("lbx118la", colnames(x))] <- "TEQ"
+groups_1[grepl("pct", colnames(x))] <- "0"
+groups_1[grepl("bcsi", colnames(x))] <- "0"
+groups_1[grepl("bmi", colnames(x))] <- "0"
+groups_1[grepl("edu", colnames(x))] <- "0"
+groups_1[grepl("race", colnames(x))] <- "0"
+groups_1[grepl("male", colnames(x))] <- "0"
+groups_1[grepl("bxcot", colnames(x))] <- "0"
+groups_1[grepl("age", colnames(x))] <- "0"
+groups_1 <- as.factor(groups_1)
+
+# bind by columns to check groupings
+cbind(colnames(x), groups_1)
+```
+
+## Cross Validate
+
+### Breaks
+```{r}
+#This provides a convergence warning if warn = TRUE
+cv_lasso_1 <- cv.grpreg(x, y, groups_1, 
+                        penalty = "grLasso", seed = 1988)
+
+# plot cve by lambda
+plot(cv_lasso_1)
+# does not work
+
+cv_lasso_1$cve
+# cve a scalar
+```
+
+### Works fine (diff seed)
+```{r}
+#cross validate model 2
+cv_lasso_2 <- cv.grpreg(x, y, groups_1, 
+                        penalty = "grLasso", seed = 44)
+
+# plot cve by lambda
+plot(cv_lasso_2)
+# does work, only thing that changed is seed!!!
+
+cv_lasso_2$cve
+```
+
+## Create NEW groups 
+
+    * 8 non-Dioxin-like PCBs
+    * 2 non-ortho PCBs
+    * TEQ (3 dioxins, 4 furans, 1 mono-ortho (Dioxin-like) PCBs, + 5 covariates)
+    * 13 covariates
+
+```{r}
+groups_2 <- vector()
+groups_2[grepl("lbx1|0",colnames(x))] <- "Non-Dioxin-like PCB"
+groups_2[grepl("lbxd", colnames(x))] <- "TEQ"
+groups_2[grepl("lbxf", colnames(x))] <- "TEQ"
+groups_2[grepl("lbxh|p", colnames(x))] <- "Non-Ortho PCB"
+groups_2[grepl("lbx118la", colnames(x))] <- "TEQ"
+
+## THIS IS THE ONLY GROUPING LINE THAT CHANGES
+groups_2[grepl("pct", colnames(x))] <- "TEQ"
+
+groups_2[grepl("bcsi", colnames(x))] <- "0"
+groups_2[grepl("bmi", colnames(x))] <- "0"
+groups_2[grepl("edu", colnames(x))] <- "0"
+groups_2[grepl("race", colnames(x))] <- "0"
+groups_2[grepl("male", colnames(x))] <- "0"
+groups_2[grepl("bxcot", colnames(x))] <- "0"
+groups_2[grepl("age", colnames(x))] <- "0"
+groups_2 <- as.factor(groups_2)
+
+# bind by columns to check groupings
+cbind(colnames(x), groups_2)
+```
+
+## Cross Validate
+
+### Works fine (diff groups)
+```{r}
+cv_lasso_3 <- cv.grpreg(x, y, groups_2, 
+                        penalty = "grLasso", seed = 1988)
+
+# plot cve by lambda
+plot(cv_lasso_3)
+# does work, same seed, only different groups!!!
+
+cv_lasso_3$cve
+# cve now a vector
+```
