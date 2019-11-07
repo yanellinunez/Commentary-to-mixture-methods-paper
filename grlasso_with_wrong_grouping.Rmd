@@ -3,6 +3,8 @@ title: "Group_lasso_wrong_grouping"
 author: "Yanelli Nunez"
 date: "10/3/2019"
 output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
@@ -37,6 +39,8 @@ x = model.matrix(log_telomean ~ ., data)[,-1]
 # Extract outcome vector
 y = data$log_telomean
 ```
+
+
 
 #Variable grouping for group lasso
 
@@ -111,6 +115,8 @@ repeat_cv_group_lasso =
 ```
   
 #plot  
+
+This plot looks better (when we have the wrong grouping); the coefficients are more consistent when looping the seed
 ```{r}
 betas_grplasso <- repeat_cv_group_lasso %>%
   ggplot() + 

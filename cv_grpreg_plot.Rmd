@@ -5,6 +5,8 @@ output:
   html_document:
     toc: TRUE
     toc_float: TRUE
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
