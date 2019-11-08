@@ -108,7 +108,7 @@ We perform this analysis with the three-group model and the lasso penalty.
 # DOES NOT WARN
 cv_lasso_3 <- cv.grpreg(x, y, group3, 
                         penalty = "grLasso", seed = 1988,
-                        n.lambda = 200, max.iter = 20000)
+                        max.iter = 20000)
 
 plot(cv_lasso_3)
 
@@ -146,13 +146,15 @@ lasso_beta_3 <- as_tibble(fit_lasso_3$beta, rownames = "variable") %>%
          method = "Grouped Lasso")
 
 #Filter out covariates
+#pdf("./Figures/NewRNewPackage/new_r_new_package_results.pdf")
 lasso_beta_3 %>% 
   filter(group3 %in% c("TEQ", "Non-Dioxin-like PCB", "Non-Ortho PCB")) %>% 
   ggplot(aes(x = variable, y = round(beta, 5))) + 
   geom_point() + theme_minimal() + geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
   facet_wrap(~ group3, scales = "free_y") +
   theme(axis.text.x = element_text(angle = 90, hjust = 1)) + coord_flip() + 
-  labs(title = "Lasso Coefficients for 3 Group Model", y = "Beta Coefficient", x = "Variable")
+  labs(title = "Results: R 3.6.0 -- grpreg 3.2-1", y = "Beta Coefficient", x = "Variable")
+#dev.off()
 ```
 
 ## Loop Over Seeds
@@ -183,7 +185,7 @@ repeat_cv =
 
 #### Without Error Bars
 ```{r}
-#pdf("./Figures/new_r_new_package_cv_curves.pdf")
+#pdf("./Figures/NewRNewPackage/new_r_new_package_cv_curves.pdf")
 repeat_cv %>% 
   mutate(seed = as.factor(seed)) %>% 
   ggplot(aes(x = lam, y = cve, color = seed)) + 
@@ -202,7 +204,7 @@ min_cv <- repeat_cv %>%
   group_by(seed) %>% 
   filter(cve == min(cve))
 
-#pdf("./Figures/new_r_new_package_cv_lam.pdf")
+#pdf("./Figures/NewRNewPackage/new_r_new_package_cv_lam.pdf")
 min_cv %>% 
   ggplot(aes(y = lam, x = seed)) + 
   geom_point(aes(color = lam)) + 
