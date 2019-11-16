@@ -21,7 +21,7 @@ library(janitor)
 library(caret)
 library(Hmisc)
 library(glmnet)
-#library(grpreg)
+library(grpreg)
 ```
 
 Note: R is version: 3.6.1
@@ -153,12 +153,13 @@ repeat_cv_lasso_2 =
 
 #### betas
 ```{r}
+
 repeat_cv_lasso  %>%
   ggplot() + 
   geom_point(aes(x = seed, y = beta_lasso), color = 'red', size = 0.5, alpha = 0.5) + 
   facet_wrap(~variable) + 
   geom_hline(yintercept = 0) +
-  ggtitle("1000 observations")
+  ggtitle("R3.6.1 glmnet 2.0-18 betas")
 
 ```
 
@@ -182,7 +183,8 @@ repeat_cv_lasso_2 %>%
   geom_point() + 
   geom_line() +
   theme(legend.position = "none") +
-  labs(x = expression(lambda), y = "Cross-Validation Error")
+  labs(x = expression(lambda), y = "Cross-Validation Error") +
+  ggtitle("R3.6.1 glmnet 2.0-18 CV")
 ```
 
 
@@ -227,8 +229,7 @@ cbind(colnames(x), group3) #bind by columns
 
 ```
 
-
-This doesn't work when we have the right grouping 
+grpreg with the edited function fro grpreg that Lizzy code
 ```{r}
 cv_lasso_3 <- cv.grpreg(x, y, group3, 
                         penalty = "grLasso", seed = 1988,
@@ -305,7 +306,8 @@ repeat_cv_group_lasso %>%
   ggplot() + 
   geom_point(aes(x = seed, y = beta_grlasso), color = 'dark green', size = 0.5, alpha = 0.5) + 
   facet_wrap(~variable) +
-  geom_hline(yintercept = 0)
+  geom_hline(yintercept = 0) +
+  ggtitle("R3.6.1 & edited grpreg 3.2-1 package")
 
 ```
 
