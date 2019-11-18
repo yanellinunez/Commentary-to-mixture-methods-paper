@@ -108,7 +108,7 @@ repeat_gwqs =
     fits = map(seed, ~fit_gwqs(seed = .x))) %>%
   unnest() 
 
-write_csv(repeat_gwqs, "gWQS_1.1.1_R3.1.6 weights.csv")
+write_csv(repeat_gwqs, "gWQS_1.1.1_R3.6.1 weights.csv")
 ```
 
 
@@ -119,7 +119,7 @@ repeat_gwqs %>%
   geom_point(aes(x = seed, y = mean_weight), color = "red", size = 0.5, alpha = 0.5) + 
   facet_wrap(~variable) + 
   geom_hline(yintercept = 0) +
-  ggtitle("WQS weights")
+  ggtitle("R3.6.1 & gWQS 1.1.1")
 ```
 
 
