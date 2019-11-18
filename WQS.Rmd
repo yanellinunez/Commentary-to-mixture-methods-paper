@@ -7,14 +7,22 @@ output:
     toc: TRUE
     toc_float: TRUE
     toc_depth : 4
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
 #install.packages("gWQS", dependencies = TRUE)
 #devtools::package_deps("gWQS") can use this to see which package dependencies you already have
-library(gWQS)
+
 library(tidyverse)
+
+#install.packages("devtools")
+#require(devtools)
+#install_version("gWQS", version = "1.1.1", repos = "http://cran.us.r-project.org")
+
+library(gWQS)
 
 options(scipen = 999)
 ```
@@ -39,25 +47,100 @@ mixture = c("LBX074LA", "LBX099LA", "LBX118LA", "LBX138LA", "LBX153LA", "LBX170L
 
 # log-transform the outcome
 dataset$log_TELOMEAN = log(dataset$TELOMEAN)
+
+
+# redefine variables race_cat and edu_cat as factors
+dataset$race_cat = factor(dataset$race_cat, levels = c(1, 2, 3, 4), labels = c(1, 2, 3, 4))
+dataset$edu_cat = factor(dataset$edu_cat, levels = c(1, 2, 3, 4), labels = c(1, 2, 3, 4))
+dataset$bmi_cat3 = factor(dataset$bmi_cat3, levels = c(1, 2, 3), labels = c(1, 2, 3))
 ```
 
 ## Weighted Quantile Sums
+Note:
+There is a new version of the gwqs package (version 2.0.0). The input for the function is a bit different compare to version 1.1.1 and the results are different. Here I am using the old package to check the seed issue. 
 
-### Unadjusted Model
-
-```{r model_1}
-# fit a first unadjusted model to look at the association between the mixture and the outcome
-# TELOMEAN = Mean Telomere Length
-results1 = gwqs(log_TELOMEAN ~ NULL, mix_name = mixture, data = dataset, q = 10, validation = 0.6,
-                b = 100, b1_pos = FALSE, b1_constr = FALSE, 
-                family = "gaussian", seed = 123,
-                plots = TRUE, tables = TRUE)
-
-summary(results1$fit)
-results1$final_weights %>% knitr::kable()
-```
 
 ### Positive Adjusted Model
+### For old gWQS version
+
+Here we obtained the same results that we optain in the workshop using the old package with the new version of R
+```{r model_2}
+# adjust for covariates:
+# blood data: LBXWBCSI LBXLYPCT LBXMOPCT LBXEOPCT LBXBAPCT LBXNEPCT
+# demographics: age_cent age_sq race_cat bmi_cat3 ln_lbxcot edu_cat
+
+
+result2 = gwqs(log_TELOMEAN ~ LBXWBCSI + LBXLYPCT + LBXMOPCT + LBXEOPCT + LBXBAPCT + LBXNEPCT + 
+               age_cent + age_sq + race_cat + bmi_cat3 + ln_lbxcot + edu_cat + male, 
+               mix_name = mixture, data = dataset, q = 10, 
+               validation = 0.6, valid_var = NULL, b = 100, b1_pos = TRUE, b1_constr = FALSE, 
+               family = "gaussian", 
+               seed = 123, wqs2 = FALSE, plots = TRUE, tables = TRUE)
+
+summary(result2$fit)
+result2$final_weights %>% knitr::kable()
+confint(result2$fit)
+
+```
+
+
+```{r}
+
+fit_gwqs = function(seed) {
+  gwqs = gwqs(log_TELOMEAN ~ LBXWBCSI + LBXLYPCT + LBXMOPCT + LBXEOPCT + LBXBAPCT + LBXNEPCT + 
+               age_cent + age_sq + race_cat + bmi_cat3 + ln_lbxcot + edu_cat + male, 
+               mix_name = mixture, data = dataset, q = 10, 
+               validation = 0.6, valid_var = NULL, b = 100, b1_pos = TRUE, b1_constr = FALSE, 
+               family = "gaussian", 
+               seed = seed, wqs2 = FALSE, plots = FALSE, tables = FALSE)
+
+
+weights <- as_tibble(gwqs$final_weights, rownames = "variable") %>% 
+    select(-mix_name) 
+  weights
+
+}
+
+
+repeat_gwqs = 
+  tibble(seed = 1:50) %>% 
+  mutate(
+    fits = map(seed, ~fit_gwqs(seed = .x))) %>%
+  unnest() 
+
+write_csv(repeat_gwqs, "gWQS_1.1.1_R3.1.6 weights.csv")
+```
+
+
+
+```{r}
+repeat_gwqs %>%
+  ggplot() + 
+  geom_point(aes(x = seed, y = mean_weight), color = "red", size = 0.5, alpha = 0.5) + 
+  facet_wrap(~variable) + 
+  geom_hline(yintercept = 0) +
+  ggtitle("WQS weights")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### Positive Adjusted Model
+### for new gWQS version
 
 ```{r model_2}
 # adjust for covariates:
@@ -81,73 +164,6 @@ summary(result2$fit)
 result2$final_weights %>% knitr::kable()
 ```
 
-```{r}
-confint(result2$fit)
-```
-
-### Negative Constrained Model
-
-```{r model_3}
-# negative direction
-# adjusting for covariates and constraining direction to negative:
-# blood data: LBXWBCSI LBXLYPCT LBXMOPCT LBXEOPCT LBXBAPCT LBXNEPCT
-# demographics: age_cent age_sq race_cat bmi_cat3 ln_lbxcot edu_cat
-result3 = gwqs(log_TELOMEAN ~ wqs + LBXWBCSI + LBXLYPCT + LBXMOPCT + LBXEOPCT + LBXBAPCT + LBXNEPCT + 
-               age_cent + age_sq + race_cat + bmi_cat3 + ln_lbxcot + edu_cat + male,
-               mix_name = mixture, data = dataset, q = 10, 
-               validation = 0.6, b = 100, b1_pos = FALSE, b1_constr = TRUE, family = "gaussian", seed = 123, plots = TRUE, tables = TRUE) 
 
 
-  
-
-summary(result3$fit)
-result3$final_weights %>% knitr::kable()
-```
-
-### Stratified Model
-
-```{r model_4}
-# stratified analysis by sex
-# create diagonal matrices for females and male having on the diagonal 1 or 0 to select female or males values respectively
-M_mat = diag(dataset$male)
-female = (dataset$male - 1)*(-1)
-F_mat = diag(female)
-# create the matrix containing the micture variables
-X = as.matrix(dataset[, mixture])
-# create a temporary matrix where we substitute NAs with 0s before the matrix multiplication
-X_t = X
-X_t[is.na(X)] = 0
-# create a matrix for females and males selecting the observations that corresponds to each sex
-XM = M_mat%*%X_t
-XF = F_mat%*%X_t
-# put back the NAs in the same position they were in the X matrix
-XM[is.na(X)] = NA
-XF[is.na(X)] = NA
-# create the vectors containing the names of the chemicals for males and females
-mixture_m = paste(mixture, "m", sep = "_")
-mixture_f = paste(mixture, "f", sep = "_")
-# rename the columns of the females and males matrices
-colnames(XM) = mixture_m
-colnames(XF) = mixture_f
-# add the new variables to the dataset
-dataset_new = cbind(dataset, XM, XF)
-
-# run the wqs model using the stratified variables in the mixtures
-mixture_new = c(mixture_m, mixture_f)
-result4 = gwqs(log_TELOMEAN ~ LBXWBCSI + LBXLYPCT + LBXMOPCT + LBXEOPCT + LBXBAPCT + LBXNEPCT + 
-               age_cent + age_sq + 
-               race_cat + bmi_cat3 + ln_lbxcot + edu_cat, mix_name = mixture_new, 
-               data = dataset_new, q = 10, 
-               validation = 0.6, valid_var = NULL, b = 100, b1_pos = TRUE, b1_constr = FALSE, 
-               family = "gaussian", 
-               seed = 123, wqs2 = FALSE, plots = TRUE, tables = TRUE)
-
-summary(result4$fit)
-result4$final_weights %>% knitr::kable()
-```
-
-```{r}
-as.tibble(cbind(y_adj = result4$y_adj, wqs = result4$wqs)) %>% 
-  ggplot(aes(y = y_adj, x = wqs)) +geom_point() + geom_smooth(se = F ) + theme_bw()
-```
 
