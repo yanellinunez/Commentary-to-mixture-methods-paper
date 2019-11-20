@@ -10,11 +10,6 @@ editor_options:
   chunk_output_type: console
 ---
 
-Note: R is version: 3.6.1
-glmnet and grpreg package are the older versions
-```{r}
-sessionInfo()
-```
 
 -If I give you seed 3 I get a full range and if I give you seed 1 I get a single point. 
 -Do group lasso with single element groupings and see if we can replicate lasso
@@ -27,6 +22,12 @@ library(caret)
 library(Hmisc)
 library(glmnet)
 library(grpreg)
+```
+
+Note: R is version: 3.6.1
+glmnet and grpreg package are the new versions
+```{r}
+sessionInfo()
 ```
 
 ### Data Import and Cleaning 
@@ -152,11 +153,13 @@ repeat_cv_lasso_2 =
 
 #### betas
 ```{r}
+
 repeat_cv_lasso  %>%
   ggplot() + 
   geom_point(aes(x = seed, y = beta_lasso), color = 'red', size = 0.5, alpha = 0.5) + 
   facet_wrap(~variable) + 
-  geom_hline(yintercept = 0)
+  geom_hline(yintercept = 0) +
+  ggtitle("R3.6.1 glmnet 2.0-18 betas")
 
 ```
 
@@ -180,7 +183,8 @@ repeat_cv_lasso_2 %>%
   geom_point() + 
   geom_line() +
   theme(legend.position = "none") +
-  labs(x = expression(lambda), y = "Cross-Validation Error")
+  labs(x = expression(lambda), y = "Cross-Validation Error") +
+  ggtitle("R3.6.1 glmnet 2.0-18 CV")
 ```
 
 
@@ -225,11 +229,11 @@ cbind(colnames(x), group3) #bind by columns
 
 ```
 
-
-This doesn't work when we have the right grouping 
+grpreg with the edited function fro grpreg that Lizzy code
 ```{r}
 cv_lasso_3 <- cv.grpreg(x, y, group3, 
-                        penalty = "grLasso", seed = 1988)
+                        penalty = "grLasso", seed = 1988,
+                        n.lambda = 200, max.iter = 20000)
 
 plot(cv_lasso_3)
 ```
@@ -239,7 +243,8 @@ plot(cv_lasso_3)
 ```{r}
 fit_with_cv = function(seed) {
   cv_lasso_3 <- cv.grpreg(x, y, group3, 
-                          penalty = "grLasso", seed = seed)
+                          penalty = "grLasso", seed = seed,
+                          n.lambda = 200, max.iter = 20000)
   
   #Find the lambda that results in the smallest CV error
   best_lasso_3 <- cv_lasso_3$lambda.min
@@ -300,7 +305,9 @@ Combined plot
 repeat_cv_group_lasso %>%
   ggplot() + 
   geom_point(aes(x = seed, y = beta_grlasso), color = 'dark green', size = 0.5, alpha = 0.5) + 
-  facet_wrap(~variable)
+  facet_wrap(~variable) +
+  geom_hline(yintercept = 0) +
+  ggtitle("R3.6.1 & edited grpreg 3.2-1 package")
 
 ```
 
