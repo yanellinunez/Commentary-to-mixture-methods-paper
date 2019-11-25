@@ -62,6 +62,7 @@ covariates = with(nhanes, cbind(age_z, agez_sq, male, bmicat2, bmicat3, educat1,
 ############################################################################################################################
 
 ### create knots matrix for Gaussian predictive process (to speed up BKMR with large datasets)
+#set.seed(1506744763) # use better seed now
 set.seed(10)
 knots100 <- fields::cover.design(lnmixture_z, nd = 100)$design
 
@@ -76,6 +77,7 @@ knots100 <- fields::cover.design(lnmixture_z, nd = 100)$design
 
 fit_seed <- function(seed) {
   set.seed(seed)
+  print(format(Sys.time(), "%c"))
   fit_bkmr_seed <-  kmbayes( y = lnLTL_z, Z = lnmixture_z, X = covariates, 
                              iter = 100000,
                              verbose = FALSE, varsel = TRUE,
@@ -117,10 +119,10 @@ get_pips <- function(model) {
   all_pips
   }
 
-repeat_knot_seed <- repeat_knot_seed %>%
+repeat_model_seed <- repeat_model_seed %>%
   mutate(pips = map(fits, ~get_pips(model = .x)))
 
-repeat_knot_seed
+repeat_model_seed
 
 ##########################################################################################################################
 ## Data Visualization
@@ -134,7 +136,7 @@ get_data_viz <- function(row) {
   Z                <- lnmixture_z                           ## Z matrix to match what was used in model
 
   ### values to keep after burnin/thin
-  sel<-seq(50001, 100000,by = 50)
+  sel <- seq(50001, 100000,by = 50)
 
   ### access convergence with traceplots 
   # TracePlot(fit = modeltoplot, par = "beta", sel = sel)
@@ -187,9 +189,21 @@ get_data_viz <- function(row) {
 repeat_model_seed <- repeat_model_seed %>% 
   mutate(plot_dat = map(1:10, ~get_data_viz(.x)))
 
-repeat_model_seed <- repeat_model_seed %>% unnest_wider(plot_dat)
+repeat_model_seed <- repeat_model_seed %>% unnest_wider(plot_dat) %>% select(-fits)
+
+save(repeat_model_seed, file = "bkmr_repeat_10.RData")
+
+load("bkmr_repeat_10.RData")
 
 repeat_model_seed
+
+##########################################################################################################################
+## PIPs
+##########################################################################################################################
+
+repeat_model_seed %>% select(seed, pips) %>% unnest(cols = c(pips)) %>% 
+  group_by(variable) %>% 
+  summarize(group_mean = mean(groupPIP), group_sd = sd(groupPIP), ind_mean = mean(condPIP), ind_sd = sd(condPIP))
 
 ##########################################################################################################################
 ## Plots
@@ -199,200 +213,49 @@ repeat_model_seed
 ## Univariate Exposure-Response Functions
 ##########################################################################################################################
 
-# uni_plot <- function(pred.resp.univar, seed) {pred.resp.univar %>% 
-#   mutate(variable = fct_recode(variable, "PCB 74" = "PCB74",
-#                                "PCB 99" = "PCB99",
-#                                "PCB 118" = "PCB118",
-#                                "PCB 138" = "PCB138",
-#                                "PCB 153" = "PCB153",
-#                                "PCB 170" = "PCB170",
-#                                "PCB 180" = "PCB180",
-#                                "PCB 187" = "PCB187",
-#                                "PCB 194" = "PCB194",
-#                                "1,2,3,6,7,8-hxcdd" = "Dioxin1",
-#                                "1,2,3,4,6,7,8-hpcdd" = "Dioxin2",
-#                                "1,2,3,4,6,7,8,9-ocdd" =  "Dioxin3",
-#                                "2,3,4,7,8-pncdf" =  "Furan1",
-#                                "1,2,3,4,7,8-hxcdf" =  "Furan2",
-#                                "1,2,3,6,7,8-hxcdf" =  "Furan3",
-#                                "1,2,3,4,6,7,8-hxcdf" =  "Furan4",
-#                                "PCB 169" =  "PCB169",
-#                                "PCB 126" = "PCB126")) %>% 
-#   ggplot(aes(z, est, ymin = est - 1.96*se, ymax = est + 1.96*se)) + 
-#   geom_smooth(stat = "identity") + labs(title = paste("Univariate Exposure-Response Functions\nSeed: ", seed), 
-#                                         y = "Estimate", x = "Exposure") + 
-#   facet_wrap(~ variable) + theme_bw() +
-#   theme(strip.background = element_rect(fill = "white"))
-# }
-# 
-# repeat_model_seed <- repeat_model_seed %>% 
-#   mutate(uni_plot = map2(pred.resp.univar, seed, ~ uni_plot(unnest(.x), .y)))
-# 
-# repeat_model_seed$uni_plot
-# 
-# # Save files
-# # file_names <- paste0("pred.resp.univar", repeat_model_seed$seed, ".pdf")
-# # map2(paste0("pred.resp.univar", repeat_model_seed$seed, ".pdf"), repeat_model_seed$uni_plot, ggsave)
-#   
-# ##########################################################################################################################
-# #### Bivariable Exposure-Response Functions
-# ##########################################################################################################################
-# 
-# bivar_plot <- function (pred.resp.bivar.levels, seed) {
-#   pred.resp.bivar.levels %>% 
-#   mutate(variable1 = fct_recode(variable1, "PCB 74" = "PCB74",
-#                                 "PCB 99" = "PCB99",
-#                                 "PCB 118" = "PCB118",
-#                                 "PCB 138" = "PCB138",
-#                                 "PCB 153" = "PCB153",
-#                                 "PCB 170" = "PCB170",
-#                                 "PCB 180" = "PCB180",
-#                                 "PCB 187" = "PCB187",
-#                                 "PCB 194" = "PCB194",
-#                                 "1,2,3,6,7,8- hxcdd" = "Dioxin1",
-#                                 "1,2,3,4,6,7,8- hpcdd" = "Dioxin2",
-#                                 "1,2,3,4,6,7,8,9- ocdd" =  "Dioxin3",
-#                                 "2,3,4,7,8- pncdf" =  "Furan1",
-#                                 "1,2,3,4,7,8- hxcdf" =  "Furan2",
-#                                 "1,2,3,6,7,8- hxcdf" =  "Furan3",
-#                                 "1,2,3,4,6,7,8- hxcdf" =  "Furan4",
-#                                 "PCB 169" =  "PCB169",
-#                                 "PCB 126" = "PCB126"),
-#          variable2 = fct_recode(variable2, "PCB 74" = "PCB74",
-#                                 "PCB 99" = "PCB99",
-#                                 "PCB 118" = "PCB118",
-#                                 "PCB 138" = "PCB138",
-#                                 "PCB 153" = "PCB153",
-#                                 "PCB 170" = "PCB170",
-#                                 "PCB 180" = "PCB180",
-#                                 "PCB 187" = "PCB187",
-#                                 "PCB 194" = "PCB194",
-#                                 "1,2,3,6,7,8- hxcdd" = "Dioxin1",
-#                                 "1,2,3,4,6,7,8- hpcdd" = "Dioxin2",
-#                                 "1,2,3,4,6,7,8,9- ocdd" =  "Dioxin3",
-#                                 "2,3,4,7,8- pncdf" =  "Furan1",
-#                                 "1,2,3,4,7,8- hxcdf" =  "Furan2",
-#                                 "1,2,3,6,7,8- hxcdf" =  "Furan3",
-#                                 "1,2,3,4,6,7,8- hxcdf" =  "Furan4",
-#                                 "PCB 169" =  "PCB169",
-#                                 "PCB 126" = "PCB126")) %>% 
-#   ggplot(aes(z1, est)) + 
-#   geom_smooth(aes(col = quantile), stat = "identity") + 
-#   facet_grid(variable2 ~ variable1, scales = "free", space = "free",
-#              labeller = labeller(variable1 = label_wrap_gen(5),
-#                                  variable2 = label_wrap_gen(5))) +
-#   xlab("Exposure 1") + theme_bw() + labs(title = paste("h(Exposure 1 | Quantiles of Exposure 2)\nSeed: ", seed),
-#                                          col = "Quantile", y = "Estimate") +
-#   theme(strip.background = element_rect(fill = "white"),
-#         panel.spacing = unit(0.05, "lines"),
-#         legend.position = "bottom")
-# }
-# 
-# repeat_model_seed <- repeat_model_seed %>% 
-#   mutate(bivar_plot = map2(pred.resp.bivar.levels, seed, ~ bivar_plot(unnest(.x), .y)))
-# 
-# repeat_model_seed$bivar_plot
-# 
-# # Save files
-# # file_names <- paste0("pred.resp.bivar.levels", repeat_model_seed$seed, ".pdf")
-# # map2(paste0("pred.resp.bivar.levels", repeat_model_seed$seed, ".pdf"), repeat_model_seed$bivar_plot, ggsave)
-# 
+repeat_model_seed %>% select(seed, pred.resp.univar) %>% 
+  unnest(cols = c(pred.resp.univar)) %>%
+  mutate(variable = fct_recode(variable, "PCB 74" = "PCB74",
+                               "PCB 99" = "PCB99",
+                               "PCB 118" = "PCB118",
+                               "PCB 138" = "PCB138",
+                               "PCB 153" = "PCB153",
+                               "PCB 170" = "PCB170",
+                               "PCB 180" = "PCB180",
+                               "PCB 187" = "PCB187",
+                               "PCB 194" = "PCB194",
+                               "1,2,3,6,7,8-hxcdd" = "Dioxin1",
+                               "1,2,3,4,6,7,8-hpcdd" = "Dioxin2",
+                               "1,2,3,4,6,7,8,9-ocdd" =  "Dioxin3",
+                               "2,3,4,7,8-pncdf" =  "Furan1",
+                               "1,2,3,4,7,8-hxcdf" =  "Furan2",
+                               "1,2,3,6,7,8-hxcdf" =  "Furan3",
+                               "1,2,3,4,6,7,8-hxcdf" =  "Furan4",
+                               "PCB 169" =  "PCB169",
+                               "PCB 126" = "PCB126")) %>%
+  mutate(seed = as.character(seed)) %>% 
+  ggplot(aes(z, est, group = seed)) +
+  geom_hline(yintercept = 00, linetype = "dashed", color = "red") +
+  geom_smooth(aes(color = seed), stat = "identity") + 
+  labs(title = "Univariate Exposure-Response Functions over 10 Model Seeds",
+                                        y = "Estimate", x = "Exposure") +
+  facet_wrap(~ variable) + theme_bw() +
+  theme(legend.position = "none") +
+  theme(strip.background = element_rect(fill = "white"))
+
 # ##########################################################################################################################
 # #### Overall Mixture Effect
 # ##########################################################################################################################
-# 
-# overall_plot <- function(risks.overall, seed) {
-#   ggplot(risks.overall, aes(quantile, est, ymin = est - 1.96*sd, ymax = est + 1.96*sd)) +  
-#   geom_hline(yintercept = 00, linetype = "dashed", color = "gray") + 
-#   geom_pointrange() + theme_bw() +
-#   labs(title = paste("Overall Mixture Effect\nSeed: ", seed),
-#        x = "Quantile", y = "Estimate")
-# }
-# 
-# repeat_model_seed <- repeat_model_seed %>% 
-#   mutate(overall_plot = map2(risks.overall, seed, ~ overall_plot(unnest(.x), .y)))
-# 
-# repeat_model_seed$overall_plot
-# 
-# # Save files
-# # file_names <- paste0("risks.overall", repeat_model_seed$seed, ".pdf")
-# # map2(paste0("risks.overall", repeat_model_seed$seed, ".pdf"), repeat_model_seed$overall_plot, ggsave)
-# 
-# ##########################################################################################################################
-# ### Single Variable Interactions
-# ##########################################################################################################################
-# 
-# int_plot <- function(risks.singvar, seed) {
-#   risks.singvar %>% mutate(variable = fct_recode(variable, "PCB 74" = "PCB74",
-#                                                "PCB 99" = "PCB99",
-#                                                "PCB 118" = "PCB118",
-#                                                "PCB 138" = "PCB138",
-#                                                "PCB 153" = "PCB153",
-#                                                "PCB 170" = "PCB170",
-#                                                "PCB 180" = "PCB180",
-#                                                "PCB 187" = "PCB187",
-#                                                "PCB 194" = "PCB194",
-#                                                "1,2,3,6,7,8-hxcdd" = "Dioxin1",
-#                                                "1,2,3,4,6,7,8-hpcdd" = "Dioxin2",
-#                                                "1,2,3,4,6,7,8,9-ocdd" =  "Dioxin3",
-#                                                "2,3,4,7,8-pncdf" =  "Furan1",
-#                                                "1,2,3,4,7,8-hxcdf" =  "Furan2",
-#                                                "1,2,3,6,7,8-hxcdf" =  "Furan3",
-#                                                "1,2,3,4,6,7,8-hxcdf" =  "Furan4",
-#                                                "PCB 169" =  "PCB169",
-#                                                "PCB 126" = "PCB126")) %>% 
-#   ggplot(aes(variable, est, ymin = est - 1.96*sd,  ymax = est + 1.96*sd, col = q.fixed)) + 
-#   geom_hline(aes(yintercept = 0), linetype = "dashed", color = "gray") +  
-#   geom_pointrange(position = position_dodge(width = 0.75)) +  coord_flip() + 
-#   theme_bw() +
-#   labs(title = paste("Mixture Interactions\nSeed: ", seed),
-#        x = "", y = "Estimate", col = "Fixed Quantile")
-# }
-# 
-# repeat_model_seed <- repeat_model_seed %>% 
-#   mutate(int_plot = map2(risks.singvar, seed, ~ int_plot(unnest(.x), .y)))
-# 
-# repeat_model_seed$int_plot
-# 
-# # Save files
-# # file_names <- paste0("risks.singvar", repeat_model_seed$seed, ".pdf")
-# # map2(paste0("risks.singvar", repeat_model_seed$seed, ".pdf"), repeat_model_seed$risks.singvar, ggsave)
-# 
-# ##########################################################################################################################
-# #### Single Variable Interaction Terms
-# ##########################################################################################################################
-# 
-# int_plot2 <- function(risk.int, seed) {
-#   risk.int %>% mutate(variable = fct_recode(variable, "PCB 74" = "PCB74",
-#                                            "PCB 99" = "PCB99",
-#                                            "PCB 118" = "PCB118",
-#                                            "PCB 138" = "PCB138",
-#                                            "PCB 153" = "PCB153",
-#                                            "PCB 170" = "PCB170",
-#                                            "PCB 180" = "PCB180",
-#                                            "PCB 187" = "PCB187",
-#                                            "PCB 194" = "PCB194",
-#                                            "1,2,3,6,7,8-hxcdd" = "Dioxin1",
-#                                            "1,2,3,4,6,7,8-hpcdd" = "Dioxin2",
-#                                            "1,2,3,4,6,7,8,9-ocdd" =  "Dioxin3",
-#                                            "2,3,4,7,8-pncdf" =  "Furan1",
-#                                            "1,2,3,4,7,8-hxcdf" =  "Furan2",
-#                                            "1,2,3,6,7,8-hxcdf" =  "Furan3",
-#                                            "1,2,3,4,6,7,8-hxcdf" =  "Furan4",
-#                                            "PCB 169" =  "PCB169",
-#                                            "PCB 126" = "PCB126")) %>% 
-#   ggplot(aes(variable, est, ymin = est - 1.96*sd, ymax = est + 1.96*sd)) + 
-#   geom_pointrange(position = position_dodge(width = 0.75)) + 
-#   geom_hline(yintercept = 0, lty = 2, col = "gray") + coord_flip() + theme_bw() +
-#   labs(title = paste("Overall Interaction Confidence\nSeed: ", seed),
-#        x = "", y = "Estimate")
-# }
-# 
-# repeat_model_seed <- repeat_model_seed %>% 
-#   mutate(int_plot2 = map2(risk.int, seed, ~ int_plot2(unnest(.x), .y)))
-# 
-# repeat_model_seed$int_plot2
-# 
-# # Save files
-# # file_names <- paste0("risk.int", repeat_model_seed$seed, ".pdf")
-# # map2(paste0("risk.int", repeat_model_seed$seed, ".pdf"), repeat_model_seed$int_plot2, ggsave)
+
+repeat_model_seed %>% select(seed, risks.overall) %>% 
+  mutate(seed = as.character(seed)) %>% 
+  unnest(cols = c(risks.overall)) %>% 
+  ggplot(aes(quantile, est, ymin = est - 1.96*sd, ymax = est + 1.96*sd, group = seed)) +
+  geom_hline(yintercept = 00, linetype = "dashed", color = "red") +
+  geom_pointrange(aes(color = seed), size = .5) + 
+  theme_bw() +
+  theme(legend.position = "none") +
+  labs(title = "Overall Mixture Effect over 10 Model Seeds",
+       x = "Quantile", y = "Estimate")
+  
+
