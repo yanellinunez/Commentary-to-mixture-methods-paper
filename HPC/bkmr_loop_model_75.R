@@ -16,7 +16,7 @@ library(tidyverse)
 
 ## read in data and only consider complete data 
 ## this drops 327 individuals, but BKMR does not handle missing data
-nhanes = na.omit(read_csv(here::here("Data/studypop.csv")))
+nhanes = na.omit(read_csv("Data/studypop.csv"))
 
 ## center/scale continous covariates and create indicators for categorical covariates
 nhanes$age_z = scale(nhanes$age_cent) ## center and scale age
