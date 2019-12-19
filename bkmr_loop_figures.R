@@ -4,18 +4,31 @@
 ## Lizzy
 ##########################################################################################################################
 
-# Need to unnest_wider(plot_dat) for all!
-repeat_model_25 %>% unnest_wider(plot_dat) %>% select(risks.overall) %>% unnest(cols = c(risks.overall))
+library(tidyverse)
 
 ##########################################################################################################################
 ## 100 Knot Seeds
 ##########################################################################################################################
 
+knots_out <- tibble()
+
+for (i in 1:100) {
+  load(paste0("./HPC/HPC_out/bkmr_", i, "_knots_loop.RDA"))
+  knots_out[i,1:4] <- repeat_knot_25
+}
+
+knots_out <- knots_out %>% unnest_wider(plot_dat)
+
+identical(knots_out$knots[[1]], knots_out$knots[[3]])
+identical(knots_out$pips[[1]], knots_out$pips[[100]])
+identical(knots_out$pred.resp.univar[[1]], knots_out$pred.resp.univar[[100]])
+identical(knots_out$risks.overall[[1]], knots_out$risks.overall[[100]])
+
 ##########################################################################################################################
 ## PIPs
 ##########################################################################################################################
 
-repeat_knot_seed %>% select(seed, pips) %>% unnest(cols = c(pips)) %>% 
+knots_out %>% select(seed, pips) %>% unnest(cols = c(pips)) %>% 
   group_by(variable) %>% 
   summarize(group_mean = mean(groupPIP), group_sd = sd(groupPIP), ind_mean = mean(condPIP), ind_sd = sd(condPIP))
 
@@ -27,7 +40,7 @@ repeat_knot_seed %>% select(seed, pips) %>% unnest(cols = c(pips)) %>%
 ## Univariate Exposure-Response Functions
 ##########################################################################################################################
 
-repeat_knot_seed %>% select(seed, pred.resp.univar) %>% 
+knots_out %>% select(seed, pred.resp.univar) %>% 
   unnest(cols = c(pred.resp.univar)) %>%
   mutate(variable = fct_recode(variable, "PCB 74" = "PCB74",
                                "PCB 99" = "PCB99",
@@ -51,7 +64,7 @@ repeat_knot_seed %>% select(seed, pred.resp.univar) %>%
   ggplot(aes(z, est, group = seed)) +
   geom_hline(yintercept = 00, linetype = "dashed", color = "red") +
   geom_smooth(aes(color = seed), stat = "identity") + 
-  labs(title = "Univariate Exposure-Response Functions over 10 Knot Seeds",
+  labs(title = "Univariate Exposure-Response Functions over 100 Knot Seeds",
        y = "Estimate", x = "Exposure") +
   facet_wrap(~ variable) + theme_bw() +
   theme(legend.position = "none") +
@@ -61,7 +74,7 @@ repeat_knot_seed %>% select(seed, pred.resp.univar) %>%
 # #### Overall Mixture Effect
 # ##########################################################################################################################
 
-repeat_knot_seed %>% select(seed, risks.overall) %>% 
+knots_out %>% select(seed, risks.overall) %>% 
   mutate(seed = as.character(seed)) %>% 
   unnest(cols = c(risks.overall)) %>% 
   ggplot(aes(quantile, est, ymin = est - 1.96*sd, ymax = est + 1.96*sd, group = seed)) +
@@ -69,18 +82,29 @@ repeat_knot_seed %>% select(seed, risks.overall) %>%
   geom_pointrange(aes(color = seed), size = .5) + 
   theme_bw() +
   theme(legend.position = "none") +
-  labs(title = "Overall Mixture Effect over 10 Knot Seeds",
+  labs(title = "Overall Mixture Effect over 100 Knot Seeds",
        x = "Quantile", y = "Estimate")
 
 ##########################################################################################################################
 ## 100 MCMC Seeds
 ##########################################################################################################################
 
+model_out <- tibble()
+
+for (i in 1:100) {
+  load(paste0("./HPC/HPC_out/bkmr_", i, "_model_loop.RDA"))
+  model_out[i,1:3] <- repeat_model_25
+}
+
+model_out <- model_out %>% unnest_wider(plot_dat)
+model_out
+
 ##########################################################################################################################
 ## PIPs
 ##########################################################################################################################
 
-repeat_model_seed %>% select(seed, pips) %>% unnest(cols = c(pips)) %>% 
+model_out %>% 
+  select(seed, pips) %>% unnest(cols = c(pips)) %>% 
   group_by(variable) %>% 
   summarize(group_mean = mean(groupPIP), group_sd = sd(groupPIP), ind_mean = mean(condPIP), ind_sd = sd(condPIP))
 
@@ -92,7 +116,7 @@ repeat_model_seed %>% select(seed, pips) %>% unnest(cols = c(pips)) %>%
 ## Univariate Exposure-Response Functions
 ##########################################################################################################################
 
-repeat_model_seed %>% select(seed, pred.resp.univar) %>% 
+model_out %>% select(seed, pred.resp.univar) %>% 
   unnest(cols = c(pred.resp.univar)) %>%
   mutate(variable = fct_recode(variable, "PCB 74" = "PCB74",
                                "PCB 99" = "PCB99",
@@ -116,7 +140,7 @@ repeat_model_seed %>% select(seed, pred.resp.univar) %>%
   ggplot(aes(z, est, group = seed)) +
   geom_hline(yintercept = 00, linetype = "dashed", color = "red") +
   geom_smooth(aes(color = seed), stat = "identity") + 
-  labs(title = "Univariate Exposure-Response Functions over 10 Model Seeds",
+  labs(title = "Univariate Exposure-Response Functions over 100 Model Seeds",
        y = "Estimate", x = "Exposure") +
   facet_wrap(~ variable) + theme_bw() +
   theme(legend.position = "none") +
@@ -126,7 +150,7 @@ repeat_model_seed %>% select(seed, pred.resp.univar) %>%
 # #### Overall Mixture Effect
 # ##########################################################################################################################
 
-repeat_model_seed %>% select(seed, risks.overall) %>% 
+model_out %>% select(seed, risks.overall) %>% 
   mutate(seed = as.character(seed)) %>% 
   unnest(cols = c(risks.overall)) %>% 
   ggplot(aes(quantile, est, ymin = est - 1.96*sd, ymax = est + 1.96*sd, group = seed)) +
@@ -134,7 +158,7 @@ repeat_model_seed %>% select(seed, risks.overall) %>%
   geom_pointrange(aes(color = seed), size = .5) + 
   theme_bw() +
   theme(legend.position = "none") +
-  labs(title = "Overall Mixture Effect over 10 Model Seeds",
+  labs(title = "Overall Mixture Effect over 100 Model Seeds",
        x = "Quantile", y = "Estimate")
 
 
