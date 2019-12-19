@@ -11,6 +11,11 @@ editor_options:
   chunk_output_type: console
 ---
 
+#Questions for Marianthi:
+
+Lasso & group lasso use the random number genrador for the cross validation part to chose the best lambda value. Lambda can be any number from 0 -> infinity. The random number generator, produces a grid of numbers that are then tested to identify the lambda that results in the smallest prediction error. 
+-Where does WQS needs a seed? does it use a tunning parameter? is this in the Lagran multiplier part? 
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
 #install.packages("gWQS", dependencies = TRUE)
@@ -28,8 +33,6 @@ options(scipen = 999)
 ```
 
 
-Note: R is version: 3.6.1
-glmnet and grpreg package are the older versions
 ```{r}
 sessionInfo()
 ```
@@ -47,6 +50,8 @@ mixture = c("LBX074LA", "LBX099LA", "LBX118LA", "LBX138LA", "LBX153LA", "LBX170L
 
 # log-transform the outcome
 dataset$log_TELOMEAN = log(dataset$TELOMEAN)
+dataset$valid.var <- c(sample(c(0,1), dim(dataset)[1], replace=TRUE))
+
 
 
 # redefine variables race_cat and edu_cat as factors
@@ -57,34 +62,36 @@ dataset$bmi_cat3 = factor(dataset$bmi_cat3, levels = c(1, 2, 3), labels = c(1, 2
 
 ## Weighted Quantile Sums
 Note:
-There is a new version of the gwqs package (version 2.0.0). The input for the function is a bit different compare to version 1.1.1 and the results are different. Here I am using the old package to check the seed issue. 
+There is a new version of the gwqs package (version 2.0.0). The input for the function is a bit different compare to version 1.1.1 and the results are different. Here I am using the old package to check the seed issue in the first code chunk and the new package in the following code chunk.
+
+For both packages the solnp optimatimation function is use to estimate the weights at each bootstrop
 
 
 ### Positive Adjusted Model
 ### For old gWQS version
 
 Here we obtained the same results that we optain in the workshop using the old package with the new version of R
-```{r model_2}
+```{r code for old package}
 # adjust for covariates:
 # blood data: LBXWBCSI LBXLYPCT LBXMOPCT LBXEOPCT LBXBAPCT LBXNEPCT
 # demographics: age_cent age_sq race_cat bmi_cat3 ln_lbxcot edu_cat
 
 
-result2 = gwqs(log_TELOMEAN ~ LBXWBCSI + LBXLYPCT + LBXMOPCT + LBXEOPCT + LBXBAPCT + LBXNEPCT + 
+result_old = gwqs(log_TELOMEAN ~ LBXWBCSI + LBXLYPCT + LBXMOPCT + LBXEOPCT + LBXBAPCT + LBXNEPCT + 
                age_cent + age_sq + race_cat + bmi_cat3 + ln_lbxcot + edu_cat + male, 
                mix_name = mixture, data = dataset, q = 10, 
                validation = 0.6, valid_var = NULL, b = 100, b1_pos = TRUE, b1_constr = FALSE, 
                family = "gaussian", 
                seed = 123, wqs2 = FALSE, plots = TRUE, tables = TRUE)
 
-summary(result2$fit)
-result2$final_weights %>% knitr::kable()
-confint(result2$fit)
+summary(result_old$fit)
+result_old$final_weights %>% knitr::kable()
+confint(result_old$fit)
 
 ```
 
 
-```{r}
+```{r function code for old package}
 
 fit_gwqs = function(seed) {
   gwqs = gwqs(log_TELOMEAN ~ LBXWBCSI + LBXLYPCT + LBXMOPCT + LBXEOPCT + LBXBAPCT + LBXNEPCT + 
@@ -112,7 +119,6 @@ write_csv(repeat_gwqs, "gWQS_1.1.1_R3.6.1 weights.csv")
 ```
 
 
-
 ```{r}
 repeat_gwqs %>%
   ggplot() + 
@@ -123,36 +129,16 @@ repeat_gwqs %>%
 ```
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ### Positive Adjusted Model
 ### for new gWQS version
 
-```{r model_2}
+```{r code for new package}
 # adjust for covariates:
 # blood data: LBXWBCSI LBXLYPCT LBXMOPCT LBXEOPCT LBXBAPCT LBXNEPCT
 # demographics: age_cent age_sq race_cat bmi_cat3 ln_lbxcot edu_cat
 
-# redefine variables race_cat and edu_cat as factors
-dataset$race_cat = factor(dataset$race_cat, levels = c(1, 2, 3, 4), labels = c(1, 2, 3, 4))
-dataset$edu_cat = factor(dataset$edu_cat, levels = c(1, 2, 3, 4), labels = c(1, 2, 3, 4))
-dataset$bmi_cat3 = factor(dataset$bmi_cat3, levels = c(1, 2, 3), labels = c(1, 2, 3))
 
-result2 = gwqs(log_TELOMEAN ~ wqs + LBXWBCSI + LBXLYPCT + LBXMOPCT + LBXEOPCT + LBXBAPCT + LBXNEPCT + 
+gwqs_new = gwqs(log_TELOMEAN ~ wqs + LBXWBCSI + LBXLYPCT + LBXMOPCT + LBXEOPCT + LBXBAPCT + LBXNEPCT + 
                age_cent + age_sq + race_cat + bmi_cat3 + ln_lbxcot + edu_cat + male, 
                mix_name = mixture, data = dataset, q = 10, 
                validation = 0.6, b = 100, b1_pos = TRUE, b1_constr = FALSE, 
@@ -160,9 +146,99 @@ result2 = gwqs(log_TELOMEAN ~ wqs + LBXWBCSI + LBXLYPCT + LBXMOPCT + LBXEOPCT + 
                seed = 123, plots = TRUE, tables = TRUE)
 
 
-summary(result2$fit)
-result2$final_weights %>% knitr::kable()
+summary(gwqs_new$fit)
+gwqs_new$final_weights %>% knitr::kable()
 ```
+
+
+```{r function code for new package, cache = TRUE}
+
+fit_gwqs_new = function(seed) {
+  gwqs = gwqs(log_TELOMEAN ~ wqs + LBXWBCSI + LBXLYPCT + LBXMOPCT + LBXEOPCT + LBXBAPCT + LBXNEPCT + 
+               age_cent + age_sq + race_cat + bmi_cat3 + ln_lbxcot + edu_cat + male, 
+               mix_name = mixture, data = dataset, q = 10, 
+               validation = 0.6, b = 100, b1_pos = TRUE, b1_constr = FALSE, 
+               family = "gaussian", 
+               seed = seed, plots = FALSE, tables = FALSE)
+
+
+weights <- as_tibble(gwqs$final_weights, rownames = "variable") %>% 
+    select(-mix_name) 
+  weights
+
+}
+
+seed_num = 1:50 
+
+#write.csv(seed_num, "random_seed_numbers.csv")
+
+repeat_gwqs_new = 
+  tibble(seed = seed_num) %>% 
+  mutate(
+    fits = map(seed, ~fit_gwqs_new(seed = .x))) %>%
+  unnest() 
+
+
+
+```
+
+
+```{r}
+write_csv(repeat_gwqs_new, "gWQS_2_R3.6.1 weights.csv")
+write_csv(repeat_gwqs_new, "gWQS_2_R3.6.1 weights_fix_seeds.csv")
+
+
+repeat_gwqs_new %>%
+  ggplot() + 
+  geom_point(aes(x = seed, y = mean_weight), color = "red", size = 0.5, alpha = 0.5) + 
+  facet_wrap(~variable) + 
+  geom_hline(yintercept = 0) +
+  ggtitle("R3.6.1 & gWQS 2.0") 
+ # theme(axis.text.x = element_text(angle = 90, size = 4))
+```
+
+
+#Specifying the splits for the training and validation sets
+```{fixed splits, cache = TRUE}
+
+fit_gwqs_new_split = function(seed) {
+  gwqs = gwqs(log_TELOMEAN ~ wqs + LBXWBCSI + LBXLYPCT + LBXMOPCT + LBXEOPCT + LBXBAPCT + LBXNEPCT + 
+               age_cent + age_sq + race_cat + bmi_cat3 + ln_lbxcot + edu_cat + male, 
+               mix_name = mixture, data = dataset, q = 10, 
+               valid_var = "valid.var", b = 100, b1_pos = TRUE, b1_constr = FALSE, 
+               family = "gaussian", 
+               seed = seed, plots = FALSE, tables = FALSE)
+
+
+weights <- as_tibble(gwqs$final_weights, rownames = "variable") %>% 
+    select(-mix_name) 
+  weights
+
+}
+
+
+#run function
+
+seed_num = 1:50 
+
+repeat_gwqs_new_split = 
+  tibble(seed = seed_num) %>% 
+  mutate(
+    fits = map(seed, ~fit_gwqs_new_split(seed = .x))) %>%
+  unnest() 
+
+#plot
+repeat_gwqs_new_split %>%
+  ggplot() + 
+  geom_point(aes(x = seed, y = mean_weight), color = "red", size = 0.5, alpha = 0.5) + 
+  facet_wrap(~variable) + 
+  geom_hline(yintercept = 0) +
+  ggtitle("R3.6.1 & gWQS 2.0 (fixed test/validation group)") +
+  ylab("weights")
+
+
+```
+
 
 
 
