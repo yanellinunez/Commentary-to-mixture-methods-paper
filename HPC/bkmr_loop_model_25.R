@@ -1,14 +1,20 @@
 ##########################################################################################################################
 ## Loop BKMR model through 100 seeds
-## 1:25
 ## 11/18/2019
 ##########################################################################################################################
 
 #install.packages("bkmr")
 #install.packages("tidyverse")
+
 ## load required libraries
-library(bkmr)
+# Location for HPC!
+library(truncnorm, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
+library(bkmr, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
 library(tidyverse)
+library(dotCall64, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
+library(spam, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
+library(maps, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
+library(fields, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
 
 ##########################################################################################################################
 ## Data Manipulation 
@@ -16,7 +22,7 @@ library(tidyverse)
 
 ## read in data and only consider complete data 
 ## this drops 327 individuals, but BKMR does not handle missing data
-nhanes = na.omit(read_csv(here::here("Data/studypop.csv")))
+nhanes = na.omit(read_csv("Data/studypop.csv"))
 
 ## center/scale continous covariates and create indicators for categorical covariates
 nhanes$age_z = scale(nhanes$age_cent) ## center and scale age
@@ -84,8 +90,15 @@ fit_seed <- function(seed) {
                                       rep(3, times = 2), rep(2, times = 7)), knots = knots100)
   }
 
-repeat_model_25 <- tibble(seed = 1:25) %>%
-  mutate(fits = map(seed, ~fit_seed(seed = .x)))
+## read job number from system environment
+## This only works if run on cluster!!
+job_num = as.integer(Sys.getenv("SGE_TASK_ID"))
+
+## set seed, create sample, export -- this can help double check that code is
+## reproducibly simulating examples
+
+repeat_model_25 <- tibble(seed = job_num) %>%
+  mutate(fits = list(fit_seed(seed)))
 
 ##########################################################################################################################
 ## Posterior Inclusion Probabilities (PIPs)
@@ -97,22 +110,20 @@ get_pips <- function(model) {
   }
 
 repeat_model_25 <- repeat_model_25 %>%
-  mutate(pips = map(fits, ~get_pips(model = .x)))
+  mutate(pips = list(get_pips(repeat_model_25$fits[[1]])))
 
 ##########################################################################################################################
 ## Data Visualization
 ##########################################################################################################################
 
-get_data_viz <- function(row) {
+get_data_viz <- function(fit) {
   ### change this for each model you fit and then rerun the code from here to the bottom
-  modeltoplot      <- repeat_model_25[row, 2][[1]][[1]]   ## name of model object
-  modeltoplot.name <- c("fit ", row)                        ## name of model for saving purposes
-  plot.name        <- c("fit ", row)                        ## part that changed in plot name 
+  modeltoplot      <- fit  ## name of model object
   Z                <- lnmixture_z                           ## Z matrix to match what was used in model
 
   ### values to keep after burnin/thin
   sel <- seq(50001, 100000,by = 50)
-  
+
   #### Univariable and Bivariable Exposure-Response Functions
   #### create dataframes for ggplot (this takes a little while to run)
 
@@ -127,9 +138,8 @@ get_data_viz <- function(row) {
 }
 
 repeat_model_25 <- repeat_model_25 %>% 
-  mutate(plot_dat = map(1:25, ~get_data_viz(.x)))
+  mutate(plot_dat = list(get_data_viz(repeat_model_25$fits[[1]])))
 
-repeat_model_25 <- repeat_model_25 %>% unnest_wider(plot_dat) %>% select(-fits)
+repeat_model_25 <- repeat_model_25 %>% select(-fits)
 
-save(repeat_model_25, file = "bkmr_repeat_model_25.RData")
-
+save(repeat_model_25, file = paste0("bkmr_", job_num, "_model_loop.RDA"))

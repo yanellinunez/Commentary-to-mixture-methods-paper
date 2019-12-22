@@ -1,14 +1,20 @@
 ##########################################################################################################################
 ## Loop BKMR knots through 100 seeds
-## 1:25
 ## 11/18/2019
 ##########################################################################################################################
 
 #install.packages("bkmr")
 #install.packages("tidyverse")
+
 ## load required libraries
-library(bkmr)
+# Location for HPC!
+library(truncnorm, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
+library(bkmr, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
 library(tidyverse)
+library(dotCall64, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
+library(spam, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
+library(maps, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
+library(fields, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
 
 ##########################################################################################################################
 ## Data Manipulation 
@@ -16,7 +22,7 @@ library(tidyverse)
 
 ## read in data and only consider complete data 
 ## this drops 327 individuals, but BKMR does not handle missing data
-nhanes = na.omit(read_csv(here::here("Data/studypop.csv")))
+nhanes = na.omit(read_csv("Data/studypop.csv"))
 
 ## center/scale continous covariates and create indicators for categorical covariates
 nhanes$age_z = scale(nhanes$age_cent) ## center and scale age
@@ -61,7 +67,6 @@ covariates = with(nhanes, cbind(age_z, agez_sq, male, bmicat2, bmicat3, educat1,
 ############################################################################################################################
 
 ### loop over knot seeds for Gaussian predictive process (to speed up BKMR with large datasets)
-
 fit_knot <- function(seed) {
   set.seed(seed)
   knots100 <- fields::cover.design(lnmixture_z, nd = 100)$design
@@ -86,17 +91,27 @@ fit_model <- function(knots) {
                                         rep(3, times = 2), rep(2, times = 7)), knots = knots)
 }
 
+## read job number from system environment
+## This only works if run on cluster!!
+job_num = as.integer(Sys.getenv("SGE_TASK_ID"))
+job_num
 
 #100 random seeds
-repeat_knot_25 <- tibble(seed = 1:25) %>%
-  mutate(knots = map(seed, ~fit_knot(seed = .x)))
+repeat_knot_25 <- tibble(seed = NA)
+repeat_knot_25
+repeat_knot_25$seed <- job_num
+repeat_knot_25
+
+repeat_knot_25$knots = list(fit_knot(repeat_knot_25$seed))
+repeat_knot_25
 
 repeat_knot_25 <- repeat_knot_25 %>%
-  mutate(fits = map(knots, ~fit_model(knots = .x)))
+  mutate(fits = list(fit_model(knots[[1]])))
+repeat_knot_25
 
-##########################################################################################################################
-## Posterior Inclusion Probabilities (PIPs)
-##########################################################################################################################
+# ##########################################################################################################################
+# ## Posterior Inclusion Probabilities (PIPs)
+# ##########################################################################################################################
 
 get_pips <- function(model) {
   all_pips = ExtractPIPs(model)
@@ -104,38 +119,36 @@ get_pips <- function(model) {
 }
 
 repeat_knot_25 <- repeat_knot_25 %>%
-  mutate(pips = map(fits, ~get_pips(model = .x)))
+  mutate(pips = list(get_pips(fits[[1]])))
 
-##########################################################################################################################
-## Data Visualization
-##########################################################################################################################
+# ##########################################################################################################################
+# ## Data Visualization
+# ##########################################################################################################################
 
-get_data_viz <- function(row) {
+get_data_viz <- function(fit) {
   ### change this for each model you fit and then rerun the code from here to the bottom
-  modeltoplot      <- repeat_knot_25[row, 3][[1]][[1]]   ## name of model object
-  modeltoplot.name <- c("fit ", row)                        ## name of model for saving purposes
-  plot.name        <- c("fit ", row)                        ## part that changed in plot name 
+  modeltoplot      <- fit  ## name of model object
   Z                <- lnmixture_z                           ## Z matrix to match what was used in model
-  
+
   ### values to keep after burnin/thin
   sel <- seq(50001, 100000,by = 50)
 
   #### Univariable and Bivariable Exposure-Response Functions
   #### create dataframes for ggplot (this takes a little while to run)
-  
+
   pred.resp.univar <- PredictorResponseUnivar(fit = modeltoplot, sel = sel, method = "approx")
-  
-  risks.overall <- OverallRiskSummaries(fit = modeltoplot, 
-                                        qs = seq(0.25, 0.75, by = 0.05), 
+
+  risks.overall <- OverallRiskSummaries(fit = modeltoplot,
+                                        qs = seq(0.25, 0.75, by = 0.05),
                                         q.fixed = 0.5, method = "approx", sel = sel)
-  
-  list(pred.resp.univar = pred.resp.univar, 
+
+  list(pred.resp.univar = pred.resp.univar,
        risks.overall = risks.overall)
 }
 
-repeat_knot_25 <- repeat_knot_25 %>% 
-  mutate(plot_dat = map(1:25, ~get_data_viz(.x)))
+repeat_knot_25 <- repeat_knot_25 %>%
+  mutate(plot_dat = list(get_data_viz(fits[[1]])))
 
-repeat_knot_25 <- repeat_knot_25 %>% unnest_wider(plot_dat) %>% select(-fits)
+repeat_knot_25 <- repeat_knot_25 %>% select(-fits)
 
-save(repeat_knot_25, file = "bkmr_repeat_25_knots.RData")
+save(repeat_model_25, file = paste0("bkmr_", job_num, "_knots_loop.RDA"))
