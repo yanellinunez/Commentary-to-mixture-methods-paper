@@ -215,15 +215,16 @@ summary(summary_data$beta_lasso)
 
 #final summary beta plot
 ```{r}
+
 summary_data %>%
   group_by(chem) %>%
   ggplot(aes(x = chem)) +
  geom_point(aes(y = beta_lasso, color = Group), size = 0.9, alpha = 0.8) +
-  geom_point(aes(y = mean, color = Group, fill = Group), shape = 23, size = 3, alpha = 0.3) +
- geom_errorbar(aes(ymin = mean-se, ymax=mean+se), width=.1, position=position_dodge(0.05)) +
-  stat_summary(aes(y = beta_lasso, fill = Group), fun.y = mean, geom ="point", shape=23, size=3, alpha = 0.4, geom = errorbar, width=0.2) +
+  geom_point(aes(y = mean, colour = Group, fill = Group), shape = 23, size = 3, alpha = 0.3) +
+ #geom_errorbar(aes(ymin = mean-se, ymax=mean+se), width=.1, position=position_dodge(0.05)) +
+  stat_summary(aes(y = beta_lasso, fill = Group), fun.y = mean, geom = "point", shape=23, size=3, alpha = 0.4) +
   #geom_boxplot(aes(y = beta_lasso, color = Group), outlier.shape = NA, alpha = 0) +
-  geom_col(aes(y = number_nonzero/4000, fill = Group), position ="identity", alpha = 0.003) +
+  geom_col(aes(y = number_nonzero/4000, fill = Group), position ="identity", alpha = 0.005) +
   scale_y_continuous(sec.axis = sec_axis(~.*4000, name = "# of Non-zero Beta Coefficients")) +
   theme_classic() +
   labs(y = "Beta Coefficients",
@@ -236,8 +237,7 @@ summary_data %>%
         text = element_text(size = 12.5)) +
   geom_hline(yintercept = 0) 
  
- 
-   
+  
   
 ```
 
