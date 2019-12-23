@@ -163,14 +163,14 @@ fit_gwqs_new = function(seed) {
 
 
 weights <- as_tibble(gwqs$final_weights, rownames = "variable") %>% 
-    select(-mix_name) 
+    dplyr::select(-mix_name) 
   weights
 
 }
 
-seed_num = 1:50 
+seed_num = 1:100 
 
-#write.csv(seed_num, "random_seed_numbers.csv")
+
 
 repeat_gwqs_new = 
   tibble(seed = seed_num) %>% 
@@ -179,14 +179,65 @@ repeat_gwqs_new =
   unnest() 
 
 
+```
+
+
+#Organizing data 
+
+```{r}
+data_gwqs <- repeat_gwqs_new%>%
+  filter(!variable %in% c("bmi_cat32", "bmi_cat33", "edu_cat2", "edu_cat3", "edu_cat4", "race_cat2", "race_cat3", "race_cat4", "male1", "ln_lbxcot", "age_cent", "age_sq", "lbxwbcsi", "lbxlypct", "lbxlypct", "lbxmopct", "lbxmopct", "lbxnepct",
+"lbxnepct", "lbxeopct", "lbxeopct", "lbxbapct", "lbxbapct")) %>%
+  mutate(Group = ifelse(variable == "LBX118LA", "mPFD", 
+                        ifelse(grepl("LBX1", variable), "Non-Dioxin-like PCBs",
+                          ifelse(grepl("LBX0", variable), "Non-Dioxin-like PCBs",
+                            ifelse(grepl("LBXP", variable), "Non-Ortho PCBs",
+                              ifelse(grepl("LBXH", variable), "Non-Ortho PCBs", "mPFD")))))) %>%
+  mutate(variable = as.factor(variable),
+          chem = fct_recode(variable, "PCB 74" = "LBX074LA",
+                                "PCB 99" = "LBX099LA",
+                                "PCB 118" = "LBX118LA",
+                                "PCB 138" = "LBX138LA",
+                                "PCB 153" = "LBX153LA",
+                                "PCB 170" = "LBX170LA",
+                                "PCB 180" = "LBX180LA",
+                                "PCB 187" = "LBX187LA",
+                                "PCB 194" = "LBX194LA",
+                                "1,2,3,6,7,8-hxcdd" = "LBXD03LA",
+                                "1,2,3,4,6,7,8-hpcdd" = "LBXD05LA",
+                               "1,2,3,4,6,7,8,9-ocdd" =  "LBXD07LA",
+                               "2,3,4,7,8-pncdf" =  "LBXF03LA",
+                               "1,2,3,4,7,8-hxcdf" =  "LBXF04LA",
+                               "1,2,3,6,7,8-hxcdf" =  "LBXF05LA",
+                               "1,2,3,4,6,7,8-hxcdf" =  "LBXF08LA",
+                               "PCB 169" =  "LBXHXCLA",
+                                "PCB 126" = "LBXPCBLA")) %>%
+  dplyr::select(-variable) %>%
+  group_by(chem) %>%
+  mutate(total_mean = mean(mean_weight),
+            sd_total_mean = sd(mean_weight)) %>%
+  dplyr::select(seed, Group, chem, mean_weight, everything())
+
+summary(data_gwqs)
+
+#counting non zero coefficients
+
+counts <- data_gwqs %>%
+  filter(mean_weight >= 0.06) %>% # 1/18 = 0.06 (1 divided by the number of chemicals)
+  group_by(chem) %>%
+  summarise(above_threshold = n())
+  
+summary_data_gwqs <- full_join(data_gwqs, counts, by = "chem") %>%
+  mutate_if(is.numeric, ~replace(., is.na(.), 0))
+
+
+write_csv(summary_data_gwqs, "summary_data_wqs_100seeds.csv")
 
 ```
 
 
+#Weights plots for WQS
 ```{r}
-write_csv(repeat_gwqs_new, "gWQS_2_R3.6.1 weights.csv")
-write_csv(repeat_gwqs_new, "gWQS_2_R3.6.1 weights_fix_seeds.csv")
-
 
 repeat_gwqs_new %>%
   ggplot() + 
@@ -196,6 +247,46 @@ repeat_gwqs_new %>%
   ggtitle("R3.6.1 & gWQS 2.0") 
  # theme(axis.text.x = element_text(angle = 90, size = 4))
 ```
+
+
+
+
+#final summary plot for lasso
+```{r}
+summary_data_gwqs %>%
+  group_by(chem) %>%
+  ggplot(aes(x = chem)) +
+  geom_jitter(aes(y = mean_weight, color = Group), shape=16, size = 1, alpha = 1,  position=position_jitter(height = 0.0005, width = .2)) +
+  #geom_point(aes(y = total_mean, fill = Group), shape = 23, size = 3, alpha = 1) +
+  #geom_errorbar(aes(ymin = total_mean-sd_total_mean, ymax=total_mean+sd_total_mean, group = chem), width=0.1, size = 0.25) +
+ stat_summary(aes(y = mean_weight), fun.data = mean_sdl, fun.args = list(mult = 1), geom = "errorbar", width=0.25) +
+  stat_summary(aes(y = mean_weight, fill = Group), fun.y = mean, geom ="point", shape=23, size=3, alpha = 1) +
+  #geom_boxplot(aes(y = beta_lasso, color = Group), outlier.shape = NA, alpha = 0) +
+  geom_col(aes(y = above_threshold/150, fill = Group), width = 0.8, position ="identity", alpha = 0.003) +
+  scale_y_continuous(sec.axis = sec_axis(~.*150, name = "# of Repeats Above Threshold")) +
+  theme_classic() +
+  labs(y = "Weight",
+       x = element_blank(),
+       title  = "WQS Over 100 seeds") +
+  theme(axis.text.x = element_text(angle = 60, hjust = 1, size = 9.5),
+                      legend.position = "bottom",
+                      legend.text = element_text(size = 12),
+        axis.text.y = element_text(size = 9.5),
+        text = element_text(size = 12.5), 
+        aspect.ratio = 1/1,
+        axis.line.x = element_blank(),
+        axis.ticks.x = element_blank()) +
+  geom_hline(yintercept = 0.06) 
+ 
+ 
+```
+
+
+
+
+
+
+
 
 
 #Specifying the splits for the training and validation sets
