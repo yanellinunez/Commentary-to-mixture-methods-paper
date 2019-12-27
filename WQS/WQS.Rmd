@@ -253,6 +253,9 @@ repeat_gwqs_new %>%
 
 #final summary plot for lasso
 ```{r}
+
+summary_data_gwqs = read_csv("./WQS/summary_data_wqs_100seeds.csv")
+
 summary_data_gwqs %>%
   group_by(chem) %>%
   ggplot(aes(x = chem)) +
@@ -262,12 +265,11 @@ summary_data_gwqs %>%
  stat_summary(aes(y = mean_weight), fun.data = mean_sdl, fun.args = list(mult = 1), geom = "errorbar", width=0.25) +
   stat_summary(aes(y = mean_weight, fill = Group), fun.y = mean, geom ="point", shape=23, size=3, alpha = 1) +
   #geom_boxplot(aes(y = beta_lasso, color = Group), outlier.shape = NA, alpha = 0) +
-  geom_col(aes(y = above_threshold/150, fill = Group), width = 0.8, position ="identity", alpha = 0.003) +
+  geom_col(aes(y = above_threshold/150, fill = Group), width = 0.8, position ="identity", alpha = 0.002) +
   scale_y_continuous(sec.axis = sec_axis(~.*150, name = "# of Repeats Above Threshold")) +
   theme_classic() +
   labs(y = "Weight",
-       x = element_blank(),
-       title  = "WQS Over 100 seeds") +
+       x = element_blank()) +
   theme(axis.text.x = element_text(angle = 60, hjust = 1, size = 9.5),
                       legend.position = "bottom",
                       legend.text = element_text(size = 12),
@@ -280,13 +282,6 @@ summary_data_gwqs %>%
  
  
 ```
-
-
-
-
-
-
-
 
 
 #Specifying the splits for the training and validation sets
