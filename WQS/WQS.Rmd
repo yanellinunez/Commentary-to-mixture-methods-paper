@@ -255,7 +255,24 @@ repeat_gwqs_new %>%
 ```{r}
 
 summary_data_gwqs = read_csv("./WQS/summary_data_wqs_100seeds.csv")
-
+summary_data_gwqs$chem <- factor(summary_data_gwqs$chem,levels = c("1,2,3,6,7,8-hxcdd",
+                                "1,2,3,4,6,7,8-hpcdd",
+                               "1,2,3,4,6,7,8,9-ocdd",
+                               "2,3,4,7,8-pncdf",
+                               "1,2,3,4,7,8-hxcdf",
+                               "1,2,3,6,7,8-hxcdf",
+                               "1,2,3,4,6,7,8-hxcdf",
+                               "PCB 118",
+                               "PCB 74",
+                                "PCB 99",
+                                "PCB 138",
+                                "PCB 153",
+                                "PCB 170",
+                                "PCB 180",
+                                "PCB 187",
+                                "PCB 194",
+                                "PCB 126",
+                                "PCB 169"))
 summary_data_gwqs %>%
   group_by(chem) %>%
   ggplot(aes(x = chem)) +

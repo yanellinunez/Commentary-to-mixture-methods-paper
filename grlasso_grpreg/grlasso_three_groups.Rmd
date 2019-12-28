@@ -173,6 +173,25 @@ summary_data_grlasso <- full_join(data_grlasso, counts_grlasso, by = "chem") %>%
   mutate_if(is.numeric, ~replace(., is.na(.), 0))
 
 summary(summary_data_grlasso$beta_grlasso)
+
+summary_data_grlasso$chem <- factor(summary_data_grlasso$chem,levels = c("1,2,3,6,7,8-hxcdd",
+                                "1,2,3,4,6,7,8-hpcdd",
+                               "1,2,3,4,6,7,8,9-ocdd",
+                               "2,3,4,7,8-pncdf",
+                               "1,2,3,4,7,8-hxcdf",
+                               "1,2,3,6,7,8-hxcdf",
+                               "1,2,3,4,6,7,8-hxcdf",
+                               "PCB 118",
+                               "PCB 74",
+                                "PCB 99",
+                                "PCB 138",
+                                "PCB 153",
+                                "PCB 170",
+                                "PCB 180",
+                                "PCB 187",
+                                "PCB 194",
+                                "PCB 126",
+                                "PCB 169"))
 ```
 
 ### beta plot for group lasso
@@ -215,8 +234,7 @@ summary_data_grlasso %>%
   scale_y_continuous(sec.axis = sec_axis(~.*4000, name = "# of Non-zero Beta Coefficients")) +
   theme_classic() +
   labs(y = "Beta Coefficients",
-       x = element_blank(),
-       title  = "Lasso Beta Coefficients Over 100 seeds") +
+       x = element_blank()) +
   theme(axis.text.x = element_text(angle = 60, hjust = 1, size = 9.5),
                       legend.position = "bottom",
                       legend.text = element_text(size = 12),
