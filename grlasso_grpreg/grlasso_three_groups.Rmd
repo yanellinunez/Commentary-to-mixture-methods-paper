@@ -224,8 +224,8 @@ summary_data_grlasso %>%
   group_by(chem) %>%
   ggplot(aes(x = chem)) +
  geom_jitter(aes(y = beta_grlasso, color = Group), shape=16, size = 1, alpha = 1,  position=position_jitter(height = 0.0005, width = .2))+
-  stat_summary(aes(y = beta_grlasso), fun.data = mean_sdl, fun.args = list(mult = 1), geom = "errorbar", width=0.25) +
-   stat_summary(aes(y = beta_grlasso, fill = Group), fun.y = mean, geom ="point", shape=23, size=3, alpha = 1) +
+ # stat_summary(aes(y = beta_grlasso), fun.data = mean_sdl, fun.args = list(mult = 1), geom = "errorbar", width=0.25) +
+  # stat_summary(aes(y = beta_grlasso, fill = Group), fun.y = mean, geom ="point", shape=23, size=3, alpha = 1) +
   #geom_point(aes(y = mean, fill = Group), shape = 23, size = 3, alpha = 1) +
  #geom_errorbar(aes(ymin = mean-se, ymax=mean+se), width=.1, position=position_dodge(0.05)) +
  
@@ -242,8 +242,10 @@ summary_data_grlasso %>%
         text = element_text(size = 12.5), 
         aspect.ratio = 1/1,
         axis.line.x = element_blank(),
-        axis.ticks.x = element_blank()) +
-  geom_hline(yintercept = 0) 
+        axis.ticks.x = element_blank(),
+        axis.line.y = element_line(color = "gray")) +
+  geom_hline(yintercept = 0, color = "gray") +
+   geom_boxplot(aes(y = beta_grlasso), outlier.shape = NA, alpha = 0) 
  
 ```
 
