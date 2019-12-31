@@ -126,11 +126,12 @@ fit_cv_lasso_2 = function(seed) {
                      type.measure = "mse", alpha = 1)
 
   
- loop_cvm    <- cv.lasso$cvm  # mean cross-validation error
+  loop_cvm    <- cv.lasso$cvm  # mean cross-validation error
   loop_cvsd   <- cv.lasso$cvsd #std error of CV error
   loop_lam    <- cv.lasso$lambda 
+  best_lambda <- cv.lasso$lambda.min # to plot min, median, max
   
-  dat <- cbind(lam = loop_lam, cvm = loop_cvm, cvsd = loop_cvsd) %>% 
+  dat <- cbind(lam = loop_lam, cvm = loop_cvm, cvsd = loop_cvsd, best_lambda = best_lambda) %>% 
     as_tibble() %>% 
     mutate(upper = cvm + 1.96*cvsd,
          lower = cvm - 1.96*cvsd) %>% 
@@ -284,6 +285,27 @@ repeat_cv_lasso_2 %>%
   theme(legend.position = "none") +
   labs(x = expression(lambda), y = "Cross-Validation Error") +
   ggtitle("R3.6.1 glmnet 2.0-18 CV")
+```
+
+#### Lambda to Plot
+```{r}
+repeat_cv_lasso_2 %>% dplyr::select(seed, best_lambda) %>% distinct() %>% summary()
+  
+pdf("./Figures/cv_lasso.pdf")
+repeat_cv_lasso_2 %>% 
+  ggplot(aes(x = lam, y = cvm)) + 
+  geom_rect(aes(xmin = 0.0008442, xmax = 0.0037404, 
+              ymin = -Inf, ymax = Inf),
+              fill = "pink", 
+              alpha = 0.9) +
+  geom_vline(xintercept = 0.0008442, color = "red", alpha = 0.6) + # Min
+  geom_vline(xintercept = 0.0037404, color = "red", alpha = 0.6) + # Max
+  geom_line(aes(group = seed), color = "gray70") +
+  geom_vline(xintercept = 0.0031053, color = "red", alpha = 0.6) + # Median
+  theme_classic(base_size = 15) +
+  theme(legend.position = "none") +
+  labs(x = expression(lambda), y = "Cross-Validation Error")
+dev.off()
 ```
 
 
