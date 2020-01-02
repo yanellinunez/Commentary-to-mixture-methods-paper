@@ -269,7 +269,6 @@ summary_data_lasso %>%
 ```
 
 
-
 ### Lambda with Error Bars
 ```{r}
 repeat_cv_lasso_2 %>% 
