@@ -230,17 +230,21 @@ summary_data_lasso$chem <- factor(summary_data_lasso$chem,levels = c("1,2,3,6,7,
                                 "PCB 126",
                                 "PCB 169"))
 
-write.csv(summary_data_lasso, "summary_data_lasso")
+write.csv(summary_data_lasso, "summary_data_lasso.csv")
 
 
 ```
 
 #final summary plot for lasso
 ```{r}
+summary_data_lasso <- read.csv("summary_data_lasso.csv") %>%
+  dplyr::select(-X)
+
 summary_data_lasso %>%
   group_by(chem) %>%
   ggplot(aes(x = chem)) +
-  geom_jitter(aes(y = beta_lasso, color = Group), shape=16, size = 1, alpha = 1,  position=position_jitter(height = 0.0008, width = .2)) +
+   geom_hline(yintercept = 0, color = "black") +
+  geom_jitter(aes(y = beta_lasso, color = Group), shape=16, size = 1, alpha = 1,  position=position_jitter(width = .2)) +
   #geom_point(aes(y = mean, fill = Group), shape = 23, size = 3, alpha = 1) +
  #geom_errorbar(aes(ymin = mean-se, ymax=mean+se), width=.1, position=position_dodge(0.05)) +
  #stat_summary(aes(y = beta_lasso), fun.data = mean_sdl, fun.args = list(mult = 1), geom = "errorbar", width=0.25) +
@@ -250,7 +254,7 @@ summary_data_lasso %>%
   theme_classic() +
   labs(y = "Beta Coefficients",
        x = element_blank()) +
-  theme(axis.text.x = element_text(angle = 60, hjust = 1, size = 9.5),
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 9.5),
                       legend.position = "bottom",
                       legend.text = element_text(size = 12),
         axis.text.y = element_text(size = 9.5),
@@ -258,8 +262,7 @@ summary_data_lasso %>%
         aspect.ratio = 1/1,
         axis.line.x = element_blank(),
         axis.ticks.x = element_blank(),
-        axis.line.y = element_line(color = "gray")) +
-  geom_hline(yintercept = 0, color = "gray") +
+        axis.line.y = element_line(color = "black")) +
   geom_boxplot(aes(y = beta_lasso), outlier.shape = NA, alpha = 0) 
  
   
