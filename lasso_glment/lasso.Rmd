@@ -230,6 +230,8 @@ summary_data_lasso$chem <- factor(summary_data_lasso$chem,levels = c("1,2,3,6,7,
                                 "PCB 126",
                                 "PCB 169"))
 
+write.csv(summary_data_lasso, "summary_data_lasso")
+
 
 ```
 

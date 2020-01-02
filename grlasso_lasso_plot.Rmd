@@ -1,0 +1,81 @@
+---
+title: "Lasso_grlasso_plot"
+author: "Yanelli Nunez"
+date: "1/2/2020"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(janitor)
+library(caret)
+library(Hmisc)
+library(glmnet)
+library(grpreg)
+```
+
+#load data
+
+```{r}
+lasso <- read_csv("summary_data_lasso.csv") %>%
+  mutate(beta = beta_lasso,
+         method = "Lasso") %>%
+  dplyr::select(-X1, -beta_lasso)
+
+grlasso <-read_csv("summary_data_grlasso.csv") %>%
+  mutate(beta = beta_grlasso,
+         method = "Group lasso") %>%
+  dplyr::select(-X1, -beta_grlasso)
+
+data <- rbind(lasso, grlasso)
+
+data$chem <- factor(data$chem,levels = c("1,2,3,6,7,8-hxcdd",
+                                "1,2,3,4,6,7,8-hpcdd",
+                               "1,2,3,4,6,7,8,9-ocdd",
+                               "2,3,4,7,8-pncdf",
+                               "1,2,3,4,7,8-hxcdf",
+                               "1,2,3,6,7,8-hxcdf",
+                               "1,2,3,4,6,7,8-hxcdf",
+                               "PCB 118",
+                               "PCB 74",
+                                "PCB 99",
+                                "PCB 138",
+                                "PCB 153",
+                                "PCB 170",
+                                "PCB 180",
+                                "PCB 187",
+                                "PCB 194",
+                                "PCB 126",
+                                "PCB 169"))
+```
+
+#final summary plot for group lasso
+```{r}
+data %>%
+  ggplot(aes(x = chem)) +
+ geom_hline(yintercept = 0, color = "black") +
+  geom_boxplot(aes(y = beta), outlier.shape = NA, alpha = 0) +
+  geom_jitter(aes(y = beta, color = Group), shape=16, size = 0.7, alpha = 1,  position=position_jitter(height = 0.0005, width = .2))  +
+  geom_col(aes(y = number_nonzero/4000, fill = Group), width = 0.8, position ="identity", alpha = 0.002) +
+  scale_y_continuous(sec.axis = sec_axis(~.*4000, name = "# of Non-zero Beta Coefficients")) +
+  facet_wrap(~ method, ncol = 2) +
+ theme_bw() +
+  labs(y = "Beta Coefficients",
+       x = element_blank()) +
+      theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 9.5),
+            legend.position = "bottom",
+            legend.text = element_text(size = 12),
+            axis.text.y = element_text(size = 9.5),
+            text = element_text(size = 12.5), 
+            aspect.ratio = 1/1,
+            axis.line.x = element_blank(),
+            axis.ticks.x = element_blank(),
+            axis.line.y = element_line(color = "black"),
+            panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+  
+ 
+ 
+```
+
