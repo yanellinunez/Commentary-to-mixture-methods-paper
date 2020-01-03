@@ -276,26 +276,28 @@ summary_data_gwqs$chem <- factor(summary_data_gwqs$chem,levels = c("1,2,3,6,7,8-
 summary_data_gwqs %>%
   group_by(chem) %>%
   ggplot(aes(x = chem)) +
-  geom_jitter(aes(y = mean_weight, color = Group), shape=16, size = 1, alpha = 1,  position=position_jitter(height = 0.0005, width = .2)) +
+  geom_hline(yintercept = 0.06, size = 0.7) +
+  geom_jitter(aes(y = mean_weight, color = Group), shape=16, size = 1, alpha = 1,  position=position_jitter(width = .2)) +
   #geom_point(aes(y = total_mean, fill = Group), shape = 23, size = 3, alpha = 1) +
   #geom_errorbar(aes(ymin = total_mean-sd_total_mean, ymax=total_mean+sd_total_mean, group = chem), width=0.1, size = 0.25) +
- stat_summary(aes(y = mean_weight), fun.data = mean_sdl, fun.args = list(mult = 1), geom = "errorbar", width=0.25) +
-  stat_summary(aes(y = mean_weight, fill = Group), fun.y = mean, geom ="point", shape=23, size=3, alpha = 1) +
-  #geom_boxplot(aes(y = beta_lasso, color = Group), outlier.shape = NA, alpha = 0) +
+ #stat_summary(aes(y = mean_weight), fun.data = mean_sdl, fun.args = list(mult = 1), geom = "errorbar", width=0.25) +
+  #stat_summary(aes(y = mean_weight, fill = Group), fun.y = mean, geom ="point", shape=23, size=3, alpha = 1) +
   geom_col(aes(y = above_threshold/150, fill = Group), width = 0.8, position ="identity", alpha = 0.002) +
   scale_y_continuous(sec.axis = sec_axis(~.*150, name = "# of Repeats Above Threshold")) +
   theme_classic() +
   labs(y = "Weight",
        x = element_blank()) +
-  theme(axis.text.x = element_text(angle = 60, hjust = 1, size = 9.5),
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 9.5),
                       legend.position = "bottom",
                       legend.text = element_text(size = 12),
         axis.text.y = element_text(size = 9.5),
         text = element_text(size = 12.5), 
         aspect.ratio = 1/1,
         axis.line.x = element_blank(),
+       # axis.line.y = element_line(color = "gray"),
         axis.ticks.x = element_blank()) +
-  geom_hline(yintercept = 0.06) 
+  geom_boxplot(aes(y = mean_weight), outlier.shape = NA, alpha = 0) 
+  
  
  
 ```
