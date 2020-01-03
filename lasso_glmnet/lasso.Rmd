@@ -290,18 +290,21 @@ repeat_cv_lasso_2 %>%
 #### Lambda to Plot
 ```{r}
 repeat_cv_lasso_2 %>% dplyr::select(seed, best_lambda) %>% distinct() %>% summary()
-  
+repeat_cv_lasso_2 %>% dplyr::select(seed, best_lambda) %>% distinct() %>% pull(best_lambda) %>% quantile()
+
 pdf("./Figures/cv_lasso.pdf")
 repeat_cv_lasso_2 %>% 
   ggplot(aes(x = lam, y = cvm)) + 
-  geom_rect(aes(xmin = 0.0008442, xmax = 0.0037404, 
-              ymin = -Inf, ymax = Inf),
-              fill = "pink", 
-              alpha = 0.9) +
-  geom_vline(xintercept = 0.0008442, color = "red", alpha = 0.6) + # Min
-  geom_vline(xintercept = 0.0037404, color = "red", alpha = 0.6) + # Max
   geom_line(aes(group = seed), color = "gray70") +
-  geom_vline(xintercept = 0.0031053, color = "red", alpha = 0.6) + # Median
+  geom_rect(aes(xmin = 0.0008442, xmax = 0.0037404, 
+               ymin = -Inf, ymax = Inf),
+               fill = "pink", 
+               alpha = 0.01) +
+  geom_vline(xintercept = 0.0031053, color = "red") + # Median
+  geom_vline(xintercept = 0.0008442, color = "red", linetype = "longdash") + # Min
+  geom_vline(xintercept = 0.0037404, color = "red", linetype = "longdash") + # Max
+  geom_vline(xintercept = 0.0028294720, color = "red", linetype = "dashed") + # Q25
+  geom_vline(xintercept = 0.0034081090, color = "red", linetype = "dashed") + # Q75
   theme_classic(base_size = 15) +
   theme(legend.position = "none") +
   labs(x = expression(lambda), y = "Cross-Validation Error")
