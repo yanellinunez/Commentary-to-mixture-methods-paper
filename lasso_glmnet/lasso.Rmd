@@ -231,15 +231,15 @@ summary_data_lasso$chem <- factor(summary_data_lasso$chem,levels = c("1,2,3,6,7,
                                 "PCB 126",
                                 "PCB 169"))
 
-write.csv(summary_data_lasso, "summary_data_lasso.csv")
+#write.csv(summary_data_lasso, "summary_data_lasso.csv")
 
 
 ```
 
 #final summary plot for lasso
 ```{r}
-summary_data_lasso <- read.csv("../lasso_glment/summary_data_lasso.csv") %>%
-  dplyr::select(-X)
+summary_data_lasso <- read_csv("./lasso_glmnet/summary_data_lasso.csv") %>%
+  dplyr::select(-X1)
 
 summary_data_lasso$chem <- factor(summary_data_lasso$chem,levels = c("1,2,3,6,7,8-hxcdd",
                                 "1,2,3,4,6,7,8-hpcdd",
