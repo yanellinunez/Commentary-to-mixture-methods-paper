@@ -241,36 +241,16 @@ summary_data_lasso$chem <- factor(summary_data_lasso$chem,levels = c("1,2,3,6,7,
 summary_data_lasso <- read_csv("./lasso_glmnet/summary_data_lasso.csv") %>%
   dplyr::select(-X1)
 
-summary_data_lasso$chem <- factor(summary_data_lasso$chem,levels = c("1,2,3,6,7,8-hxcdd",
-                                "1,2,3,4,6,7,8-hpcdd",
-                               "1,2,3,4,6,7,8,9-ocdd",
-                               "2,3,4,7,8-pncdf",
-                               "1,2,3,4,7,8-hxcdf",
-                               "1,2,3,6,7,8-hxcdf",
-                               "1,2,3,4,6,7,8-hxcdf",
-                               "PCB 118",
-                               "PCB 74",
-                                "PCB 99",
-                                "PCB 138",
-                                "PCB 153",
-                                "PCB 170",
-                                "PCB 180",
-                                "PCB 187",
-                                "PCB 194",
-                                "PCB 126",
-                                "PCB 169"))
-
-
 summary_data_lasso %>%
   group_by(chem) %>%
   ggplot(aes(x = chem)) +
    geom_hline(yintercept = 0, color = "black") +
-  geom_jitter(aes(y = beta_lasso, color = Group), shape=16, size = 1, alpha = 1,  position=position_jitter(width = .2)) +
+  geom_jitter(aes(y = beta_lasso, color = Group), shape=16, size = 1, position=position_jitter(width = .2)) +
   #geom_point(aes(y = mean, fill = Group), shape = 23, size = 3, alpha = 1) +
  #geom_errorbar(aes(ymin = mean-se, ymax=mean+se), width=.1, position=position_dodge(0.05)) +
  #stat_summary(aes(y = beta_lasso), fun.data = mean_sdl, fun.args = list(mult = 1), geom = "errorbar", width=0.25) +
   # stat_summary(aes(y = beta_lasso, fill = Group), fun.y = mean, geom ="point", shape=23, size=3, alpha = 1) +
-  geom_col(aes(y = number_nonzero/4000, fill = Group), width = 0.8, position ="identity", alpha = 0.002) +
+  geom_col(aes(y = number_nonzero/4000, fill = Group), width = 0.8, position ="identity", alpha = 0.005) +
   scale_y_continuous(sec.axis = sec_axis(~.*4000, name = "# of Non-zero Beta Coefficients")) +
   theme_classic() +
   labs(y = "Beta Coefficients",
