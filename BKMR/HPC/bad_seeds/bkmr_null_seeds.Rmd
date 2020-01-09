@@ -1,0 +1,253 @@
+---
+title: "Null BKMR Seeds"
+subtitle: "Check Convergence"
+author: "Lizzy Gibson"
+date: "1/8/2020"
+output: 
+  html_document:
+    toc: TRUE
+    toc_float: TRUE
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(bkmr)
+```
+
+## Load Model Fits
+
+```{r, cache = TRUE}
+load(here::here("./BKMR/HPC/bad_seeds/bkmr_5_model_loop.RDA"))
+model_5 <- repeat_model_25 %>% dplyr::select(fits) %>% .[[1]] %>% .[[1]]
+```
+
+```{r, cache = TRUE}
+load(here::here("./BKMR/HPC/bad_seeds/bkmr_16_model_loop.RDA"))
+model_16 <- repeat_model_25 %>% dplyr::select(fits) %>% .[[1]] %>% .[[1]]
+```
+
+```{r, cache = TRUE}
+load(here::here("./BKMR/HPC/bad_seeds/bkmr_46_model_loop.RDA"))
+model_46 <- repeat_model_25 %>% dplyr::select(fits) %>% .[[1]] %>% .[[1]]
+```
+
+```{r, cache = TRUE}
+load(here::here("./BKMR/HPC/bad_seeds/bkmr_49_model_loop.RDA"))
+model_49 <- repeat_model_25 %>% dplyr::select(fits) %>% .[[1]] %>% .[[1]]
+```
+
+## Beta Trace Plots
+
+### Seed 5
+
+```{r}
+TracePlot(fit = model_5, par = "beta", comp = 1)
+TracePlot(fit = model_5, par = "beta", comp = 2)
+TracePlot(fit = model_5, par = "beta", comp = 3)
+TracePlot(fit = model_5, par = "beta", comp = 4)
+TracePlot(fit = model_5, par = "beta", comp = 5)
+TracePlot(fit = model_5, par = "beta", comp = 6)
+TracePlot(fit = model_5, par = "beta", comp = 7)
+TracePlot(fit = model_5, par = "beta", comp = 8)
+TracePlot(fit = model_5, par = "beta", comp = 9)
+TracePlot(fit = model_5, par = "beta", comp = 10)
+TracePlot(fit = model_5, par = "beta", comp = 11)
+TracePlot(fit = model_5, par = "beta", comp = 12)
+TracePlot(fit = model_5, par = "beta", comp = 13)
+TracePlot(fit = model_5, par = "beta", comp = 14)
+TracePlot(fit = model_5, par = "beta", comp = 15)
+TracePlot(fit = model_5, par = "beta", comp = 16)
+TracePlot(fit = model_5, par = "beta", comp = 17)
+TracePlot(fit = model_5, par = "beta", comp = 18)
+```
+
+### Seed 16
+
+```{r}
+TracePlot(fit = model_16, par = "beta", comp = 1)
+TracePlot(fit = model_16, par = "beta", comp = 2)
+TracePlot(fit = model_16, par = "beta", comp = 3)
+TracePlot(fit = model_16, par = "beta", comp = 4)
+TracePlot(fit = model_16, par = "beta", comp = 5)
+TracePlot(fit = model_16, par = "beta", comp = 6)
+TracePlot(fit = model_16, par = "beta", comp = 7)
+TracePlot(fit = model_16, par = "beta", comp = 8)
+TracePlot(fit = model_16, par = "beta", comp = 9)
+TracePlot(fit = model_16, par = "beta", comp = 10)
+TracePlot(fit = model_16, par = "beta", comp = 11)
+TracePlot(fit = model_16, par = "beta", comp = 12)
+TracePlot(fit = model_16, par = "beta", comp = 13)
+TracePlot(fit = model_16, par = "beta", comp = 14)
+TracePlot(fit = model_16, par = "beta", comp = 15)
+TracePlot(fit = model_16, par = "beta", comp = 16)
+TracePlot(fit = model_16, par = "beta", comp = 17)
+TracePlot(fit = model_16, par = "beta", comp = 18)
+```
+
+### Seed 46
+
+```{r}
+TracePlot(fit = model_46, par = "beta", comp = 1)
+TracePlot(fit = model_46, par = "beta", comp = 2)
+TracePlot(fit = model_46, par = "beta", comp = 3)
+TracePlot(fit = model_46, par = "beta", comp = 4)
+TracePlot(fit = model_46, par = "beta", comp = 5)
+TracePlot(fit = model_46, par = "beta", comp = 6)
+TracePlot(fit = model_46, par = "beta", comp = 7)
+TracePlot(fit = model_46, par = "beta", comp = 8)
+TracePlot(fit = model_46, par = "beta", comp = 9)
+TracePlot(fit = model_46, par = "beta", comp = 10)
+TracePlot(fit = model_46, par = "beta", comp = 11)
+TracePlot(fit = model_46, par = "beta", comp = 12)
+TracePlot(fit = model_46, par = "beta", comp = 13)
+TracePlot(fit = model_46, par = "beta", comp = 14)
+TracePlot(fit = model_46, par = "beta", comp = 15)
+TracePlot(fit = model_46, par = "beta", comp = 16)
+TracePlot(fit = model_46, par = "beta", comp = 17)
+TracePlot(fit = model_46, par = "beta", comp = 18)
+```
+
+### Seed 49
+
+```{r}
+TracePlot(fit = model_49, par = "beta", comp = 1)
+TracePlot(fit = model_49, par = "beta", comp = 2)
+TracePlot(fit = model_49, par = "beta", comp = 3)
+TracePlot(fit = model_49, par = "beta", comp = 4)
+TracePlot(fit = model_49, par = "beta", comp = 5)
+TracePlot(fit = model_49, par = "beta", comp = 6)
+TracePlot(fit = model_49, par = "beta", comp = 7)
+TracePlot(fit = model_49, par = "beta", comp = 8)
+TracePlot(fit = model_49, par = "beta", comp = 9)
+TracePlot(fit = model_49, par = "beta", comp = 10)
+TracePlot(fit = model_49, par = "beta", comp = 11)
+TracePlot(fit = model_49, par = "beta", comp = 12)
+TracePlot(fit = model_49, par = "beta", comp = 13)
+TracePlot(fit = model_49, par = "beta", comp = 14)
+TracePlot(fit = model_49, par = "beta", comp = 15)
+TracePlot(fit = model_49, par = "beta", comp = 16)
+TracePlot(fit = model_49, par = "beta", comp = 17)
+TracePlot(fit = model_49, par = "beta", comp = 18)
+```
+
+## Smoothness (R) Trace Plots
+
+### Seed 5
+
+```{r}
+TracePlot(fit = model_5, par = "r", comp = 1)
+TracePlot(fit = model_5, par = "r", comp = 2)
+TracePlot(fit = model_5, par = "r", comp = 3)
+TracePlot(fit = model_5, par = "r", comp = 4)
+TracePlot(fit = model_5, par = "r", comp = 5)
+TracePlot(fit = model_5, par = "r", comp = 6)
+TracePlot(fit = model_5, par = "r", comp = 7)
+TracePlot(fit = model_5, par = "r", comp = 8)
+TracePlot(fit = model_5, par = "r", comp = 9)
+TracePlot(fit = model_5, par = "r", comp = 10)
+TracePlot(fit = model_5, par = "r", comp = 11)
+TracePlot(fit = model_5, par = "r", comp = 12)
+TracePlot(fit = model_5, par = "r", comp = 13)
+TracePlot(fit = model_5, par = "r", comp = 14)
+TracePlot(fit = model_5, par = "r", comp = 15)
+TracePlot(fit = model_5, par = "r", comp = 16)
+TracePlot(fit = model_5, par = "r", comp = 17)
+TracePlot(fit = model_5, par = "r", comp = 18)
+```
+
+### Seed 16
+
+```{r}
+TracePlot(fit = model_16, par = "r", comp = 1)
+TracePlot(fit = model_16, par = "r", comp = 2)
+TracePlot(fit = model_16, par = "r", comp = 3)
+TracePlot(fit = model_16, par = "r", comp = 4)
+TracePlot(fit = model_16, par = "r", comp = 5)
+TracePlot(fit = model_16, par = "r", comp = 6)
+TracePlot(fit = model_16, par = "r", comp = 7)
+TracePlot(fit = model_16, par = "r", comp = 8)
+TracePlot(fit = model_16, par = "r", comp = 9)
+TracePlot(fit = model_16, par = "r", comp = 10)
+TracePlot(fit = model_16, par = "r", comp = 11)
+TracePlot(fit = model_16, par = "r", comp = 12)
+TracePlot(fit = model_16, par = "r", comp = 13)
+TracePlot(fit = model_16, par = "r", comp = 14)
+TracePlot(fit = model_16, par = "r", comp = 15)
+TracePlot(fit = model_16, par = "r", comp = 16)
+TracePlot(fit = model_16, par = "r", comp = 17)
+TracePlot(fit = model_16, par = "r", comp = 18)
+```
+
+### Seed 46
+
+```{r}
+TracePlot(fit = model_46, par = "r", comp = 1)
+TracePlot(fit = model_46, par = "r", comp = 2)
+TracePlot(fit = model_46, par = "r", comp = 3)
+TracePlot(fit = model_46, par = "r", comp = 4)
+TracePlot(fit = model_46, par = "r", comp = 5)
+TracePlot(fit = model_46, par = "r", comp = 6)
+TracePlot(fit = model_46, par = "r", comp = 7)
+TracePlot(fit = model_46, par = "r", comp = 8)
+TracePlot(fit = model_46, par = "r", comp = 9)
+TracePlot(fit = model_46, par = "r", comp = 10)
+TracePlot(fit = model_46, par = "r", comp = 11)
+TracePlot(fit = model_46, par = "r", comp = 12)
+TracePlot(fit = model_46, par = "r", comp = 13)
+TracePlot(fit = model_46, par = "r", comp = 14)
+TracePlot(fit = model_46, par = "r", comp = 15)
+TracePlot(fit = model_46, par = "r", comp = 16)
+TracePlot(fit = model_46, par = "r", comp = 17)
+TracePlot(fit = model_46, par = "r", comp = 18)
+```
+
+### Seed 49
+
+```{r}
+TracePlot(fit = model_49, par = "r", comp = 1)
+TracePlot(fit = model_49, par = "r", comp = 2)
+TracePlot(fit = model_49, par = "r", comp = 3)
+TracePlot(fit = model_49, par = "r", comp = 4)
+TracePlot(fit = model_49, par = "r", comp = 5)
+TracePlot(fit = model_49, par = "r", comp = 6)
+TracePlot(fit = model_49, par = "r", comp = 7)
+TracePlot(fit = model_49, par = "r", comp = 8)
+TracePlot(fit = model_49, par = "r", comp = 9)
+TracePlot(fit = model_49, par = "r", comp = 10)
+TracePlot(fit = model_49, par = "r", comp = 11)
+TracePlot(fit = model_49, par = "r", comp = 12)
+TracePlot(fit = model_49, par = "r", comp = 13)
+TracePlot(fit = model_49, par = "r", comp = 14)
+TracePlot(fit = model_49, par = "r", comp = 15)
+TracePlot(fit = model_49, par = "r", comp = 16)
+TracePlot(fit = model_49, par = "r", comp = 17)
+TracePlot(fit = model_49, par = "r", comp = 18)
+```
+
+## Residual Error Variance Trace Plots
+
+### Seed 5
+
+```{r}
+TracePlot(fit = model_5, par = "sigsq.eps")
+```
+
+### Seed 16
+
+```{r}
+TracePlot(fit = model_16, par = "sigsq.eps")
+```
+
+### Seed 46
+
+```{r}
+TracePlot(fit = model_46, par = "sigsq.eps")
+```
+
+### Seed 49
+
+```{r}
+TracePlot(fit = model_49, par = "sigsq.eps")
+```
