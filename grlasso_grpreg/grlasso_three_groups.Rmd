@@ -193,7 +193,7 @@ summary_data_grlasso$chem <- factor(summary_data_grlasso$chem,levels = c("1,2,3,
                                 "PCB 126",
                                 "PCB 169"))
 
-write.csv(summary_data_grlasso, "summary_data_grlasso.csv")
+#write.csv(summary_data_grlasso, "summary_data_grlasso.csv")
 ```
 
 ### beta plot for group lasso
@@ -223,8 +223,8 @@ labs(y = "Beta Coefficients",
 #final summary plot for group lasso
 ```{r}
 
-summary_data_grlasso <- read.csv("summary_data_grlasso.csv") %>%
-  dplyr::select(-X)
+summary_data_grlasso <- read_csv("./grlasso_grpreg/summary_data_grlasso.csv") %>%
+  dplyr::select(-X1)
 
 summary_data_grlasso %>%
   group_by(chem) %>%
