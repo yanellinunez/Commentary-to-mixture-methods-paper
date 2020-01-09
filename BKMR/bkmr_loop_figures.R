@@ -146,7 +146,7 @@ knots_out %>%
 # #### Overall Mixture Effect
 # ##########################################################################################################################
 
-knots_out %>% select(seed, risks.overall) %>% 
+knots_out %>% dplyr::select(seed, risks.overall) %>% 
   mutate(seed = as.character(seed)) %>% 
   unnest(cols = c(risks.overall)) %>% 
   ggplot(aes(quantile, est, ymin = est - 1.96*sd, ymax = est + 1.96*sd, group = seed)) +
@@ -157,7 +157,7 @@ knots_out %>% select(seed, risks.overall) %>%
   labs(title = "Overall Mixture Effect over 100 Knot Seeds",
        x = "Quantile", y = "Estimate")
 
-knots_out %>% select(seed, risks.overall) %>% 
+knots_out %>% dplyr::select(seed, risks.overall) %>% 
   mutate(seed = as.character(seed)) %>% 
   unnest(cols = c(risks.overall)) %>%
   group_by(seed) %>% 
@@ -276,12 +276,12 @@ model_plot <- model_out %>% dplyr::select(seed, pred.resp.univar) %>%
   theme_minimal() +
   theme(legend.position = "none", strip.background = element_rect(fill = "white"))
 
-pdf("./Figures/BKMR_model_plot.pdf")
+#pdf("./Figures/BKMR_model_plot.pdf")
 model_plot
-dev.off()
+#dev.off()
 
 # For paper
-pdf("./Figures/BKMR_2pop_plot.pdf")
+#pdf("./Figures/BKMR_2pop_plot_med.pdf")
 model_out %>% dplyr::select(seed, pred.resp.univar) %>% 
   unnest(cols = c(pred.resp.univar)) %>%
   left_join(., mediann, by = c("z", "variable")) %>% 
@@ -310,16 +310,16 @@ model_out %>% dplyr::select(seed, pred.resp.univar) %>%
   geom_smooth(aes(group = seed,
                   #ymin = est - 1.96*se,
                   #ymax = est + 1.96*se
-  ), alpha = 0.01, size = 0.25,
-  color = "blue", stat = "identity") + 
-  #geom_smooth(aes(x = z, y = mediann, 
-  #                ymin = q25, ymax = q75), size = 0.5, # med +- iqr
-  #                fill = "lightskyblue", alpha = 0.1, stat = "identity") + 
+                  ), alpha = 0.01, size = 0.25,
+                  color = "gray70", stat = "identity") + 
+  geom_smooth(aes(x = z, y = mediann),
+                  #ymin = q25, ymax = q75), size = 0.5, # med +- iqr
+                  color = "blue", size = 0.5, stat = "identity") + 
   facet_wrap(~ variable) +
   labs(y = "Estimate", x = "Exposure") +
   theme_minimal(base_size = 15) +
   theme(legend.position = "none", strip.background = element_rect(fill = "white"))
-dev.off()
+#dev.off()
 
 model_out %>% dplyr::select(seed, pred.resp.univar) %>% 
   unnest(cols = c(pred.resp.univar)) %>%
