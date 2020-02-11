@@ -146,7 +146,7 @@ knots_out %>%
 # #### Overall Mixture Effect
 # ##########################################################################################################################
 
-knots_out %>% select(seed, risks.overall) %>% 
+knots_out %>% dplyr::select(seed, risks.overall) %>% 
   mutate(seed = as.character(seed)) %>% 
   unnest(cols = c(risks.overall)) %>% 
   ggplot(aes(quantile, est, ymin = est - 1.96*sd, ymax = est + 1.96*sd, group = seed)) +
@@ -157,7 +157,7 @@ knots_out %>% select(seed, risks.overall) %>%
   labs(title = "Overall Mixture Effect over 100 Knot Seeds",
        x = "Quantile", y = "Estimate")
 
-knots_out %>% select(seed, risks.overall) %>% 
+knots_out %>% dplyr::select(seed, risks.overall) %>% 
   mutate(seed = as.character(seed)) %>% 
   unnest(cols = c(risks.overall)) %>%
   group_by(seed) %>% 
@@ -276,50 +276,44 @@ model_plot <- model_out %>% dplyr::select(seed, pred.resp.univar) %>%
   theme_minimal() +
   theme(legend.position = "none", strip.background = element_rect(fill = "white"))
 
-pdf("./Figures/BKMR_model_plot.pdf")
+#pdf("./Figures/BKMR_model_plot.pdf")
 model_plot
-dev.off()
+#dev.off()
 
-# For paper
-pdf("./Figures/BKMR_2pop_plot.pdf")
-model_out %>% dplyr::select(seed, pred.resp.univar) %>% 
+to_plot <- model_out %>% dplyr::select(seed, pred.resp.univar) %>% 
   unnest(cols = c(pred.resp.univar)) %>%
   left_join(., mediann, by = c("z", "variable")) %>% 
   mutate(variable = fct_recode(variable, "PCB 74" = "PCB74",
-                               "PCB 99" = "PCB99",
-                               "PCB 118" = "PCB118",
-                               "PCB 138" = "PCB138",
-                               "PCB 153" = "PCB153",
-                               "PCB 170" = "PCB170",
-                               "PCB 180" = "PCB180",
-                               "PCB 187" = "PCB187",
-                               "PCB 194" = "PCB194",
-                               "1,2,3,6,7,8-hxcdd" = "Dioxin1",
-                               "1,2,3,4,6,7,8-hpcdd" = "Dioxin2",
-                               "1,2,3,4,6,7,8,9-ocdd" =  "Dioxin3",
-                               "2,3,4,7,8-pncdf" =  "Furan1",
-                               "1,2,3,4,7,8-hxcdf" =  "Furan2",
-                               "1,2,3,6,7,8-hxcdf" =  "Furan3",
-                               "1,2,3,4,6,7,8-hxcdf" =  "Furan4",
-                               "PCB 169" =  "PCB169",
-                               "PCB 126" = "PCB126")) %>%
+                               "2,3,4,7,8-pncdf" =  "Furan1")) %>%
   mutate(seed = as.character(seed)) %>%
   filter(variable == "2,3,4,7,8-pncdf" | variable == "PCB 74") %>% 
-  ggplot(aes(z, est, group = seed)) +
-  geom_hline(yintercept = 00, linetype = "dashed") +
-  geom_smooth(aes(group = seed,
-                  #ymin = est - 1.96*se,
-                  #ymax = est + 1.96*se
-  ), alpha = 0.01, size = 0.25,
-  color = "blue", stat = "identity") + 
-  #geom_smooth(aes(x = z, y = mediann, 
-  #                ymin = q25, ymax = q75), size = 0.5, # med +- iqr
-  #                fill = "lightskyblue", alpha = 0.1, stat = "identity") + 
+  mutate(null_seed = as.factor(ifelse(variable == "2,3,4,7,8-pncdf" & seed %in% c("5", "16", "46", "49"), 1, 0)))
+
+table(to_plot$null_seed)
+
+# For paper
+pdf("./Figures/BKMR_2pop_plot_med.pdf")
+ggplot(to_plot, aes(x = z, y = est,
+                       ymin = est - 1.96*se,
+                       ymax = est + 1.96*se,
+                       group = seed)) +
   facet_wrap(~ variable) +
+  geom_ribbon(data = subset(to_plot, null_seed %in% c("0")),
+              fill = "gray90", alpha = 0.2, size = 0.25, stat = "identity") +
+  geom_ribbon(data = subset(to_plot, null_seed %in% c("1")),
+              fill = "gray50", alpha = 0.2, size = 0.25, stat = "identity") + #lower # gray is darker
+  geom_hline(yintercept = 00, linetype = "dashed") +
+  geom_smooth(se = FALSE, , color = "gray40", stat = "identity") + 
+  geom_smooth(aes(x = z, y = mediann),
+                  #ymin = q25, ymax = q75), size = 0.5, # med +- iqr
+                  color = "blue") +
   labs(y = "Estimate", x = "Exposure") +
   theme_minimal(base_size = 15) +
   theme(legend.position = "none", strip.background = element_rect(fill = "white"))
 dev.off()
+
+ggplot(iris, aes(x = Sepal.Length, y = Sepal.Width, color = Species)) +
+  geom_point(data = subset(iris, Species %in% c("setosa","virginica")))
 
 model_out %>% dplyr::select(seed, pred.resp.univar) %>% 
   unnest(cols = c(pred.resp.univar)) %>%

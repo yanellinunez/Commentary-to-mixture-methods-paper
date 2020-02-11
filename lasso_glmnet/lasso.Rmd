@@ -241,6 +241,7 @@ summary_data_lasso$chem <- factor(summary_data_lasso$chem,levels = c("1,2,3,6,7,
 summary_data_lasso <- read_csv("./lasso_glmnet/summary_data_lasso.csv") %>%
   dplyr::select(-X1)
 
+#pdf("./Figures/lasso_summary.pdf")
 summary_data_lasso %>%
   group_by(chem) %>%
   ggplot(aes(x = chem)) +
@@ -250,7 +251,11 @@ summary_data_lasso %>%
  #geom_errorbar(aes(ymin = mean-se, ymax=mean+se), width=.1, position=position_dodge(0.05)) +
  #stat_summary(aes(y = beta_lasso), fun.data = mean_sdl, fun.args = list(mult = 1), geom = "errorbar", width=0.25) +
   # stat_summary(aes(y = beta_lasso, fill = Group), fun.y = mean, geom ="point", shape=23, size=3, alpha = 1) +
+<<<<<<< HEAD
+  geom_col(aes(y = number_nonzero/4000, fill = Group), width = 0.8, position ="identity", alpha = 0.006) +
+=======
   geom_col(aes(y = number_nonzero/4000, fill = Group), width = 0.8, position ="identity", alpha = 0.005) +
+>>>>>>> 0fd4f5e4eddf65665618107701058fd7b255d794
   scale_y_continuous(sec.axis = sec_axis(~.*4000, name = "# of Non-zero Beta Coefficients")) +
   theme_classic() +
   labs(y = "Beta Coefficients",
@@ -266,7 +271,7 @@ summary_data_lasso %>%
         axis.line.y = element_line(color = "black"),
         legend.title = element_blank()) +
   geom_boxplot(aes(y = beta_lasso), outlier.shape = NA, alpha = 0) 
- 
+#dev.off()
   
 ```
 
@@ -299,23 +304,23 @@ repeat_cv_lasso_2 %>%
 repeat_cv_lasso_2 %>% dplyr::select(seed, best_lambda) %>% distinct() %>% summary()
 repeat_cv_lasso_2 %>% dplyr::select(seed, best_lambda) %>% distinct() %>% pull(best_lambda) %>% quantile()
 
-pdf("./Figures/cv_lasso.pdf")
+#pdf("./Figures/cv_lasso.pdf")
 repeat_cv_lasso_2 %>% 
   ggplot(aes(x = lam, y = cvm)) + 
-  geom_line(aes(group = seed), color = "gray70") +
   geom_rect(aes(xmin = 0.0008442, xmax = 0.0037404, 
                ymin = -Inf, ymax = Inf),
                fill = "pink", 
                alpha = 0.01) +
+  geom_line(aes(group = seed), color = "gray70") +
   geom_vline(xintercept = 0.0031053, color = "red") + # Median
   geom_vline(xintercept = 0.0008442, color = "red", linetype = "longdash") + # Min
   geom_vline(xintercept = 0.0037404, color = "red", linetype = "longdash") + # Max
-  geom_vline(xintercept = 0.0028294720, color = "red", linetype = "dashed") + # Q25
-  geom_vline(xintercept = 0.0034081090, color = "red", linetype = "dashed") + # Q75
+  geom_vline(xintercept = 0.0028294720, color = "red", linetype = "dotdash") + # Q25
+  geom_vline(xintercept = 0.0034081090, color = "red", linetype = "dotdash") + # Q75
   theme_classic(base_size = 15) +
   theme(legend.position = "none") +
   labs(x = expression(lambda), y = "Cross-Validation Error")
-dev.off()
+#dev.off()
 ```
 
 

@@ -140,6 +140,7 @@ get_data_viz <- function(fit) {
 repeat_model_25 <- repeat_model_25 %>% 
   mutate(plot_dat = list(get_data_viz(repeat_model_25$fits[[1]])))
 
-repeat_model_25 <- repeat_model_25 %>% select(-fits)
+# Keep fits to assess 4 null seeds
+#repeat_model_25 <- repeat_model_25 %>% select(-fits)
 
 save(repeat_model_25, file = paste0("bkmr_", job_num, "_model_loop.RDA"))
