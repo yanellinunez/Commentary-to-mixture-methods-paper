@@ -219,7 +219,6 @@ labs(y = "Beta Coefficients",
 ```
 
 
-
 #final summary plot for group lasso
 ```{r}
 
@@ -241,14 +240,15 @@ summary_data_grlasso %>%
   theme_classic() +
   labs(y = "Beta Coefficients",
        x = element_blank()) +
-      theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 9.5),
+      theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 20),
             legend.position = "bottom",
-            legend.text = element_text(size = 12),
-            axis.text.y = element_text(size = 9.5),
-            text = element_text(size = 12.5), 
+            legend.text = element_text(size = 20),
+            axis.text.y = element_text(size = 20),
+            text = element_text(size = 24), 
             aspect.ratio = 1/1,
             axis.line.x = element_blank(),
             axis.ticks.x = element_blank(),
+            legend.title = element_blank(),
             axis.line.y = element_line(color = "black"))
  
  
