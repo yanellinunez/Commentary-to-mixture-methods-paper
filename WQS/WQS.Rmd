@@ -20,6 +20,7 @@ Lasso & group lasso use the random number genrador for the cross validation part
 knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
 #install.packages("gWQS", dependencies = TRUE)
 #devtools::package_deps("gWQS") can use this to see which package dependencies you already have
+library(broom)
 
 library(tidyverse)
 
@@ -88,6 +89,9 @@ summary(result_old$fit)
 result_old$final_weights %>% knitr::kable()
 confint(result_old$fit)
 
+
+
+
 ```
 
 
@@ -141,16 +145,76 @@ repeat_gwqs %>%
 gwqs_new = gwqs(log_TELOMEAN ~ wqs + LBXWBCSI + LBXLYPCT + LBXMOPCT + LBXEOPCT + LBXBAPCT + LBXNEPCT + 
                age_cent + age_sq + race_cat + bmi_cat3 + ln_lbxcot + edu_cat + male, 
                mix_name = mixture, data = dataset, q = 10, 
-               validation = 0.6, b = 100, b1_pos = TRUE, b1_constr = FALSE, 
+               validation = 0.6, b = 5, b1_pos = TRUE, b1_constr = FALSE, 
                family = "gaussian", 
                seed = 123, plots = TRUE, tables = TRUE)
 
+test <- tidy(gwqs_new$fit) %>% 
+  filter(term == "wqs")
 
-summary(gwqs_new$fit)
-gwqs_new$final_weights %>% knitr::kable()
+
+```
+
+#re-run to get the index 
+
+```{r}
+fit_gwqs_index = function(seed) {
+  gwqs = gwqs(log_TELOMEAN ~ wqs + LBXWBCSI + LBXLYPCT + LBXMOPCT + LBXEOPCT + LBXBAPCT + LBXNEPCT + 
+               age_cent + age_sq + race_cat + bmi_cat3 + ln_lbxcot + edu_cat + male, 
+               mix_name = mixture, data = dataset, q = 10, 
+               validation = 0.6, b = 100, b1_pos = TRUE, b1_constr = FALSE, 
+               family = "gaussian", 
+               seed = seed, plots = FALSE, tables = FALSE)
+  
+test <- tidy(gwqs$fit) %>% 
+  filter(term == "wqs")
+  
+}
+
+seed_num = 1:100
+index_data  = 
+  tibble(seed = seed_num) %>% 
+  mutate(
+    fits = map(seed, ~fit_gwqs_index(seed = .x))) %>%
+  unnest() 
+
+write_csv(index_data, "index_data_wqs_100seeds.csv")
+
 ```
 
 
+```{r}
+index_data <- read_csv("./index_data_wqs_100seeds.csv")
+
+index_figure <- index_data %>% 
+ # mutate(seed = as.character(seed)) %>%
+  mutate(beta_avrg = mean(estimate),
+         variance = std.error^2,
+         variance_avrg = mean(variance),
+         B_prep = (estimate - beta_avrg)^2,
+         t = (sum(B_prep)/99) * 1.01 + variance_avrg,
+         std.error_pool = sqrt(t))
+
+ 
+index_figure %>% 
+  ggplot(aes(y = estimate, x = seed)) +
+  geom_pointrange(aes(ymin = estimate - 1.96 * std.error, ymax=estimate + 1.96 * std.error), size = 0.23) + 
+  geom_pointrange(aes(y = 0.0159226, x = 0,
+                 ymin = 0.0159226 - 1.96 * 0.006141966, 
+                 ymax = 0.0159226 + 1.96 * 0.006141966), size = 0.35, color = "red") +
+ coord_flip() +
+  theme_classic() + 
+  xlab("Seed") +
+  ylab("Estimate") +
+   theme(axis.text = element_text(size = 18),
+        text = element_text(size = 20))
+  
+
+```
+
+
+
+# function to get the weights 
 ```{r function code for new package, cache = TRUE}
 
 fit_gwqs_new = function(seed) {
@@ -164,12 +228,12 @@ fit_gwqs_new = function(seed) {
 
 weights <- as_tibble(gwqs$final_weights, rownames = "variable") %>% 
     dplyr::select(-mix_name) 
-  weights
+
+
 
 }
 
-seed_num = 1:100 
-
+seed_num = 1:100
 
 
 repeat_gwqs_new = 
