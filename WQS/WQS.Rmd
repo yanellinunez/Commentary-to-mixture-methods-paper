@@ -183,6 +183,8 @@ write_csv(index_data, "index_data_wqs_100seeds.csv")
 ```
 
 
+#index figure
+Note: to calculate the std.error for the pooled index we use Rubin's rule to account for both within and between seed estimates. 
 ```{r}
 index_data <- read_csv("./index_data_wqs_100seeds.csv")
 
@@ -192,8 +194,8 @@ index_figure <- index_data %>%
          variance = std.error^2,
          variance_avrg = mean(variance),
          B_prep = (estimate - beta_avrg)^2,
-         t = (sum(B_prep)/99) * 1.01 + variance_avrg,
-         std.error_pool = sqrt(t))
+         t = (sum(B_prep)/99) * 1.01 + variance_avrg, #calculating variance for pooled estimate using Rubin's rule
+         std.error_pool = sqrt(t)) #standard error 
 
  
 index_figure %>% 
