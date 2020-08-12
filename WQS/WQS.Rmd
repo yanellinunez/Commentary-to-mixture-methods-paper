@@ -1,5 +1,5 @@
 ---
-title: "betas for WQS based on seed number"
+title: Random Seed WQS weights and Index
 author: "Yanelli Nunez"
 date: "8/16/2019"
 output: 
@@ -11,23 +11,13 @@ editor_options:
   chunk_output_type: console
 ---
 
-#Questions for Marianthi:
-
-Lasso & group lasso use the random number genrador for the cross validation part to chose the best lambda value. Lambda can be any number from 0 -> infinity. The random number generator, produces a grid of numbers that are then tested to identify the lambda that results in the smallest prediction error. 
--Where does WQS needs a seed? does it use a tunning parameter? is this in the Lagran multiplier part? 
+## Load packages
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
-#install.packages("gWQS", dependencies = TRUE)
-#devtools::package_deps("gWQS") can use this to see which package dependencies you already have
+
 library(broom)
-
 library(tidyverse)
-
-#install.packages("devtools")
-#require(devtools)
-#install_version("gWQS", version = "1.1.1", repos = "http://cran.us.r-project.org")
-
 library(gWQS)
 
 options(scipen = 999)
@@ -40,7 +30,7 @@ sessionInfo()
 
 ## Data Import and Cleaning
 
-```{r import}
+```{r 1}
 # import the dataset
 dataset = read_csv(here::here("Data/studypop.csv"))
 
@@ -61,82 +51,10 @@ dataset$edu_cat = factor(dataset$edu_cat, levels = c(1, 2, 3, 4), labels = c(1, 
 dataset$bmi_cat3 = factor(dataset$bmi_cat3, levels = c(1, 2, 3), labels = c(1, 2, 3))
 ```
 
-## Weighted Quantile Sums
-Note:
-There is a new version of the gwqs package (version 2.0.0). The input for the function is a bit different compare to version 1.1.1 and the results are different. Here I am using the old package to check the seed issue in the first code chunk and the new package in the following code chunk.
 
-For both packages the solnp optimatimation function is use to estimate the weights at each bootstrop
+## Positive adjusted model with a single seed
 
-
-### Positive Adjusted Model
-### For old gWQS version
-
-Here we obtained the same results that we optain in the workshop using the old package with the new version of R
-```{r code for old package}
-# adjust for covariates:
-# blood data: LBXWBCSI LBXLYPCT LBXMOPCT LBXEOPCT LBXBAPCT LBXNEPCT
-# demographics: age_cent age_sq race_cat bmi_cat3 ln_lbxcot edu_cat
-
-
-result_old = gwqs(log_TELOMEAN ~ LBXWBCSI + LBXLYPCT + LBXMOPCT + LBXEOPCT + LBXBAPCT + LBXNEPCT + 
-               age_cent + age_sq + race_cat + bmi_cat3 + ln_lbxcot + edu_cat + male, 
-               mix_name = mixture, data = dataset, q = 10, 
-               validation = 0.6, valid_var = NULL, b = 100, b1_pos = TRUE, b1_constr = FALSE, 
-               family = "gaussian", 
-               seed = 123, wqs2 = FALSE, plots = TRUE, tables = TRUE)
-
-summary(result_old$fit)
-result_old$final_weights %>% knitr::kable()
-confint(result_old$fit)
-
-
-
-
-```
-
-
-```{r function code for old package}
-
-fit_gwqs = function(seed) {
-  gwqs = gwqs(log_TELOMEAN ~ LBXWBCSI + LBXLYPCT + LBXMOPCT + LBXEOPCT + LBXBAPCT + LBXNEPCT + 
-               age_cent + age_sq + race_cat + bmi_cat3 + ln_lbxcot + edu_cat + male, 
-               mix_name = mixture, data = dataset, q = 10, 
-               validation = 0.6, valid_var = NULL, b = 100, b1_pos = TRUE, b1_constr = FALSE, 
-               family = "gaussian", 
-               seed = seed, wqs2 = FALSE, plots = FALSE, tables = FALSE)
-
-
-weights <- as_tibble(gwqs$final_weights, rownames = "variable") %>% 
-    select(-mix_name) 
-  weights
-
-}
-
-
-repeat_gwqs = 
-  tibble(seed = 1:50) %>% 
-  mutate(
-    fits = map(seed, ~fit_gwqs(seed = .x))) %>%
-  unnest() 
-
-write_csv(repeat_gwqs, "gWQS_1.1.1_R3.6.1 weights.csv")
-```
-
-
-```{r}
-repeat_gwqs %>%
-  ggplot() + 
-  geom_point(aes(x = seed, y = mean_weight), color = "red", size = 0.5, alpha = 0.5) + 
-  facet_wrap(~variable) + 
-  geom_hline(yintercept = 0) +
-  ggtitle("R3.6.1 & gWQS 1.1.1")
-```
-
-
-### Positive Adjusted Model
-### for new gWQS version
-
-```{r code for new package}
+```{r 2}
 # adjust for covariates:
 # blood data: LBXWBCSI LBXLYPCT LBXMOPCT LBXEOPCT LBXBAPCT LBXNEPCT
 # demographics: age_cent age_sq race_cat bmi_cat3 ln_lbxcot edu_cat
@@ -155,9 +73,14 @@ test <- tidy(gwqs_new$fit) %>%
 
 ```
 
-#re-run to get the index 
 
-```{r}
+## WQS over 100 different seeds to obtain index
+
+Note: this code chunk takes very long to run. We saved the output data as a .csv called "index_data_wqs_100seeds.csv" that you can use in code chunk 4.
+
+```{r 3}
+# Function to run wqs over 100 different seeds and extract the index optained in each seed 
+
 fit_gwqs_index = function(seed) {
   gwqs = gwqs(log_TELOMEAN ~ wqs + LBXWBCSI + LBXLYPCT + LBXMOPCT + LBXEOPCT + LBXBAPCT + LBXNEPCT + 
                age_cent + age_sq + race_cat + bmi_cat3 + ln_lbxcot + edu_cat + male, 
@@ -171,6 +94,8 @@ test <- tidy(gwqs$fit) %>%
   
 }
 
+# Apply function with seeds 1-100 (this takes very long time to finish running. I save a .csv file with the out put data so you don't have to run this)
+
 seed_num = 1:100
 index_data  = 
   tibble(seed = seed_num) %>% 
@@ -178,15 +103,19 @@ index_data  =
     fits = map(seed, ~fit_gwqs_index(seed = .x))) %>%
   unnest() 
 
-write_csv(index_data, "index_data_wqs_100seeds.csv")
+#save data so we don't have to run this function again because it takes too long
+
+#write_csv(index_data, "index_data_wqs_100seeds.csv")
 
 ```
 
 
-#index figure
+## Visualization for index across the different seeds
+
 Note: to calculate the std.error for the pooled index we use Rubin's rule to account for both within and between seed estimates. 
-```{r}
-index_data <- read_csv("./index_data_wqs_100seeds.csv")
+
+```{r 4 }
+index_data <- read_csv("WQS/index_data_wqs_100seeds.csv")
 
 index_figure <- index_data %>% 
  # mutate(seed = as.character(seed)) %>%
@@ -215,9 +144,13 @@ index_figure %>%
 ```
 
 
+## WQS over 100 different seeds to obtain index to obtain weights
 
-# function to get the weights 
-```{r function code for new package, cache = TRUE}
+Note: this code chunk takes very long to run. After, we tidy the data, we saved the output data as a .csv called "summary_data_wqs_100seeds.csv" that you can use in code chunks 7, 8, 9.
+
+```{r 5}
+
+# Function to run wqs over 100 different seeds and extract the weights optained in each seed
 
 fit_gwqs_new = function(seed) {
   gwqs = gwqs(log_TELOMEAN ~ wqs + LBXWBCSI + LBXLYPCT + LBXMOPCT + LBXEOPCT + LBXBAPCT + LBXNEPCT + 
@@ -231,9 +164,9 @@ fit_gwqs_new = function(seed) {
 weights <- as_tibble(gwqs$final_weights, rownames = "variable") %>% 
     dplyr::select(-mix_name) 
 
-
-
 }
+
+# Apply function with seeds 1-100 (this takes very long time to finish running. I save a .csv file with the out put data so you don't have to run this)
 
 seed_num = 1:100
 
@@ -248,9 +181,12 @@ repeat_gwqs_new =
 ```
 
 
-#Organizing data 
+## Tidy data obtained from running group lasso with 100 different seeds
 
-```{r}
+```{r 6}
+
+# Tidy data 
+
 data_gwqs <- repeat_gwqs_new%>%
   filter(!variable %in% c("bmi_cat32", "bmi_cat33", "edu_cat2", "edu_cat3", "edu_cat4", "race_cat2", "race_cat3", "race_cat4", "male1", "ln_lbxcot", "age_cent", "age_sq", "lbxwbcsi", "lbxlypct", "lbxlypct", "lbxmopct", "lbxmopct", "lbxnepct",
 "lbxnepct", "lbxeopct", "lbxeopct", "lbxbapct", "lbxbapct")) %>%
@@ -286,7 +222,7 @@ data_gwqs <- repeat_gwqs_new%>%
 
 summary(data_gwqs)
 
-#counting non zero coefficients
+# We count the number of non zero coefficients
 
 counts <- data_gwqs %>%
   filter(mean_weight >= 0.06) %>% # 1/18 = 0.06 (1 divided by the number of chemicals)
@@ -297,30 +233,31 @@ summary_data_gwqs <- full_join(data_gwqs, counts, by = "chem") %>%
   mutate_if(is.numeric, ~replace(., is.na(.), 0))
 
 
-write_csv(summary_data_gwqs, "summary_data_wqs_100seeds.csv")
+#write_csv(summary_data_gwqs, "summary_data_wqs_100seeds.csv")
 
 ```
 
 
-#Weights plots for WQS
-```{r}
 
-repeat_gwqs_new %>%
+## Weights plots for WQS
+
+```{r 7 }
+summary_data_gwqs = read_csv("./WQS/summary_data_wqs_100seeds.csv")
+
+summary_data_gwqs %>%
   ggplot() + 
   geom_point(aes(x = seed, y = mean_weight), color = "red", size = 0.5, alpha = 0.5) + 
-  facet_wrap(~variable) + 
+  facet_wrap(~chem) + 
   geom_hline(yintercept = 0) +
-  ggtitle("R3.6.1 & gWQS 2.0") 
- # theme(axis.text.x = element_text(angle = 90, size = 4))
+  ggtitle("Chem weights over 100 different seeds") 
+
 ```
 
+## Visualization of beta values over different seeds (group lasso)
 
 
+```{r 8}
 
-#final summary plot for lasso
-```{r}
-
-summary_data_gwqs = read_csv("./WQS/summary_data_wqs_100seeds.csv")
 summary_data_gwqs$chem <- factor(summary_data_gwqs$chem,levels = c("1,2,3,6,7,8-hxcdd",
                                 "1,2,3,4,6,7,8-hpcdd",
                                "1,2,3,4,6,7,8,9-ocdd",
@@ -344,20 +281,16 @@ summary_data_gwqs %>%
   ggplot(aes(x = chem)) +
   geom_hline(yintercept = 0.06, size = 0.7) +
   geom_jitter(aes(y = mean_weight, color = Group), shape=16, size = 1, alpha = 1,  position=position_jitter(width = .2)) +
-  #geom_point(aes(y = total_mean, fill = Group), shape = 23, size = 3, alpha = 1) +
-  #geom_errorbar(aes(ymin = total_mean-sd_total_mean, ymax=total_mean+sd_total_mean, group = chem), width=0.1, size = 0.25) +
- #stat_summary(aes(y = mean_weight), fun.data = mean_sdl, fun.args = list(mult = 1), geom = "errorbar", width=0.25) +
-  #stat_summary(aes(y = mean_weight, fill = Group), fun.y = mean, geom ="point", shape=23, size=3, alpha = 1) +
   geom_col(aes(y = above_threshold/150, fill = Group), width = 0.8, position ="identity", alpha = 0.002) +
   scale_y_continuous(sec.axis = sec_axis(~.*150, name = "# of Repeats Above Threshold")) +
   theme_classic() +
   labs(y = "Weight",
        x = element_blank()) +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 20),
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 14),
                       legend.position = "bottom",
-                      legend.text = element_text(size = 20),
-        axis.text.y = element_text(size = 20),
-        text = element_text(size = 24), 
+                      legend.text = element_text(size = 12),
+        axis.text.y = element_text(size = 12),
+        text = element_text(size = 14), 
         aspect.ratio = 1/1,
         axis.line.x = element_blank(),
        # axis.line.y = element_line(color = "gray"),
@@ -369,57 +302,19 @@ summary_data_gwqs %>%
  
 ```
 
-#largest weight values 
-```{r}
+## Largest weight values 
+
+```{r 9}
 max_weight <- summary_data_gwqs %>%
   group_by(seed) %>%
   filter(mean_weight == max(mean_weight)) %>%
   group_by(chem) %>%
   summarise(n())
 
-```
-
-
-#Specifying the splits for the training and validation sets
-```{fixed splits, cache = TRUE}
-
-fit_gwqs_new_split = function(seed) {
-  gwqs = gwqs(log_TELOMEAN ~ wqs + LBXWBCSI + LBXLYPCT + LBXMOPCT + LBXEOPCT + LBXBAPCT + LBXNEPCT + 
-               age_cent + age_sq + race_cat + bmi_cat3 + ln_lbxcot + edu_cat + male, 
-               mix_name = mixture, data = dataset, q = 10, 
-               valid_var = "valid.var", b = 100, b1_pos = TRUE, b1_constr = FALSE, 
-               family = "gaussian", 
-               seed = seed, plots = FALSE, tables = FALSE)
-
-
-weights <- as_tibble(gwqs$final_weights, rownames = "variable") %>% 
-    select(-mix_name) 
-  weights
-
-}
-
-
-#run function
-
-seed_num = 1:50 
-
-repeat_gwqs_new_split = 
-  tibble(seed = seed_num) %>% 
-  mutate(
-    fits = map(seed, ~fit_gwqs_new_split(seed = .x))) %>%
-  unnest() 
-
-#plot
-repeat_gwqs_new_split %>%
-  ggplot() + 
-  geom_point(aes(x = seed, y = mean_weight), color = "red", size = 0.5, alpha = 0.5) + 
-  facet_wrap(~variable) + 
-  geom_hline(yintercept = 0) +
-  ggtitle("R3.6.1 & gWQS 2.0 (fixed test/validation group)") +
-  ylab("weights")
-
+max_weight
 
 ```
+
 
 
 
