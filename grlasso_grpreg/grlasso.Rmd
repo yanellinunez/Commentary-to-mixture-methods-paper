@@ -1,0 +1,273 @@
+---
+title: Random Seed Group Lasso Coefficients
+author: "Yanelli Nunez"
+date: "12/23/2019"
+output: 
+  html_document:
+    toc: TRUE
+    toc_float: TRUE
+editor_options: 
+  chunk_output_type: console
+---
+
+##Load packages
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
+
+library(tidyverse)
+library(janitor)
+library(caret)
+library(Hmisc)
+library(glmnet)
+library(grpreg)
+```
+
+
+```{r}
+sessionInfo()
+```
+
+## Data import and cleaning 
+
+First, load the dataset; clean up names as needed; and convert factors to, well, factors. Next we remove missing values and reorder predictors (environmental variables first, confounders second). In keeping with standard practice, we'll ln-transform the environmental exposures and the outcome. This is the dataset we'll use to illustrate variable selection methods.
+
+```{r}
+study_pop = read_csv("../Data/studypop.csv") %>% 
+  clean_names(case = c("old_janitor")) %>% 
+  mutate(bmi_cat3 = as.factor(bmi_cat3),
+         edu_cat = as.factor(edu_cat),
+         race_cat = as.factor(race_cat),
+         male = as.factor(male)) 
+
+data = study_pop %>% 
+  mutate_at(vars(contains("la")), log) %>% 
+  mutate(log_telomean = log(telomean)) %>% 
+  dplyr::select(log_telomean, lbx074la:lbx187la, lbxd03la:lbx194la, everything(), -seqn, -telomean) %>% 
+  na.omit(log_telomean) 
+
+# Create a matrix of predictors as x
+x = model.matrix(log_telomean ~ ., data)[,-1]
+
+# Extract outcome vector
+y = data$log_telomean
+```
+
+## Variable grouping for group lasso
+
+```{r}
+group3 <- vector()
+group3[grepl("lbx1|0",colnames(x))] <- "Non-Dioxin-like PCB"
+group3[grepl("lbxd", colnames(x))] <- "TEQ"
+group3[grepl("lbxf", colnames(x))] <- "TEQ"
+group3[grepl("lbxh|p", colnames(x))] <- "Non-Ortho PCB"
+group3[grepl("lbx118la", colnames(x))] <- "TEQ"
+group3[grepl("pct", colnames(x))] <- "0"
+group3[grepl("bcsi", colnames(x))] <- "0"
+group3[grepl("bmi", colnames(x))] <- "0"
+group3[grepl("edu", colnames(x))] <- "0"
+group3[grepl("race", colnames(x))] <- "0"
+group3[grepl("male", colnames(x))] <- "0"
+group3[grepl("bxcot", colnames(x))] <- "0"
+group3[grepl("age", colnames(x))] <- "0"
+group3 <- as.factor(group3)
+
+cbind(colnames(x), group3) #bind by columns
+
+
+```
+
+## Cross validation with a single seed
+
+Note: we use the grpreg with the edited function from the r script file title "grpreg_warn_T.R". That file needs to be run before this codee chunk. 
+
+```{r}
+cv_lasso_3 <- cv.grpreg(x, y, group3, 
+                        penalty = "grLasso", seed = 1988,
+                        n.lambda = 200, max.iter = 20000)
+
+plot(cv_lasso_3)
+```
+
+
+## Looping group lasso over different seeds
+
+```{r}
+
+# We create a function to run group lasso with differenct seeds
+
+fit_with_cv = function(seed) {
+  cv_lasso_3 <- cv.grpreg(x, y, group3, 
+                          penalty = "grLasso", seed = seed,
+                          n.lambda = 200, max.iter = 20000)
+  
+  #Find the lambda that results in the smallest CV error
+  best_lasso_3 <- cv_lasso_3$lambda.min
+  
+  #Fit model with cross-validated lambda
+  fit_lasso_3 <- grpreg(x, y, group3, penalty = "grLasso", lambda = best_lasso_3)
+  
+  fit_lasso_3
+}
+
+extract_coefs_grlasso = function(fit) {
+  as_tibble(fit$beta, rownames = "variable") %>% 
+    rename(beta = 2) %>% 
+    filter(variable != "(Intercept)")  %>% 
+    mutate(group3 = group3) %>% 
+    filter(group3 %in% c("TEQ", "Non-Dioxin-like PCB", "Non-Ortho PCB"))
+}
+
+
+# We apply our function to run grlasso from 1-100 seeds
+
+repeat_cv_group_lasso = 
+  tibble(seed = 1:100) %>% 
+  mutate(
+    fits = map(seed, ~fit_with_cv(seed = .x)),
+    coefs = map(fits, extract_coefs_grlasso)) %>% 
+  dplyr::select(-fits) %>% 
+  unnest() %>%
+  rename(beta_grlasso = "beta")
+  
+
+```
+
+## Tidy data obtained from running group lasso with 100 different seeds
+
+```{r}
+
+# Tidy data output from function above
+
+data_grlasso <- repeat_cv_group_lasso %>%
+  filter(!variable %in% c("bmi_cat32", "bmi_cat33", "edu_cat2", "edu_cat3", "edu_cat4", "race_cat2", "race_cat3", "race_cat4", "male1", "ln_lbxcot", "age_cent", "age_sq", "lbxwbcsi", "lbxlypct", "lbxlypct", "lbxmopct", "lbxmopct", "lbxnepct",
+"lbxnepct", "lbxeopct", "lbxeopct", "lbxbapct", "lbxbapct")) %>%
+  mutate(Group = ifelse(variable == "lbx118la", "mPFD", 
+                        ifelse(grepl("lbx1", variable), "Non-Dioxin-like PCBs",
+                          ifelse(grepl("lbx0", variable), "Non-Dioxin-like PCBs",
+                            ifelse(grepl("lbxp", variable), "Non-Ortho PCBs",
+                              ifelse(grepl("lbxh", variable), "Non-Ortho PCBs", "mPFD")))))) %>%
+  mutate(variable = as.factor(variable),
+          chem = fct_recode(variable, "PCB 74" = "lbx074la",
+                                "PCB 99" = "lbx099la",
+                                "PCB 118" = "lbx118la",
+                                "PCB 138" = "lbx138la",
+                                "PCB 153" = "lbx153la",
+                                "PCB 170" = "lbx170la",
+                                "PCB 180" = "lbx180la",
+                                "PCB 187" = "lbx187la",
+                                "PCB 194" = "lbx194la",
+                                "1,2,3,6,7,8-hxcdd" = "lbxd03la",
+                                "1,2,3,4,6,7,8-hpcdd" = "lbxd05la",
+                               "1,2,3,4,6,7,8,9-ocdd" =  "lbxd07la",
+                               "2,3,4,7,8-pncdf" =  "lbxf03la",
+                               "1,2,3,4,7,8-hxcdf" =  "lbxf04la",
+                               "1,2,3,6,7,8-hxcdf" =  "lbxf05la",
+                               "1,2,3,4,6,7,8-hxcdf" =  "lbxf08la",
+                               "PCB 169" =  "lbxhxcla",
+                                "PCB 126" = "lbxpcbla")) %>%
+  dplyr::select(-variable, -group3) %>%
+  group_by(chem) %>%
+  mutate(mean = mean(beta_grlasso),
+            se = sd(beta_grlasso)/sqrt(length(beta_grlasso))) %>%
+  dplyr::select(seed, Group, chem, beta_grlasso, everything())
+
+# We count the number of non zero coefficients
+
+counts_grlasso <- data_grlasso %>%
+  filter(beta_grlasso != 0) %>%
+  group_by(chem) %>%
+  summarise(number_nonzero = n())
+  
+
+summary_data_grlasso <- full_join(data_grlasso, counts_grlasso, by = "chem") %>%
+  mutate_if(is.numeric, ~replace(., is.na(.), 0))
+
+summary(summary_data_grlasso$beta_grlasso)
+
+summary_data_grlasso$chem <- factor(summary_data_grlasso$chem,levels = c("1,2,3,6,7,8-hxcdd",
+                                "1,2,3,4,6,7,8-hpcdd",
+                               "1,2,3,4,6,7,8,9-ocdd",
+                               "2,3,4,7,8-pncdf",
+                               "1,2,3,4,7,8-hxcdf",
+                               "1,2,3,6,7,8-hxcdf",
+                               "1,2,3,4,6,7,8-hxcdf",
+                               "PCB 118",
+                               "PCB 74",
+                                "PCB 99",
+                                "PCB 138",
+                                "PCB 153",
+                                "PCB 170",
+                                "PCB 180",
+                                "PCB 187",
+                                "PCB 194",
+                                "PCB 126",
+                                "PCB 169"))
+# save file for later use 
+#write.csv(summary_data_grlasso, "summary_data_grlasso.csv")
+```
+
+## Visualization of beta values over different seeds (group lasso)
+
+```{r}
+
+#inconsistend coefficients when looping the seed
+
+summary_data_grlasso  %>%
+  ggplot() + 
+  geom_point(aes(x = seed, y = beta_grlasso, color = Group), size = 0.5, alpha = 0.7) + 
+  facet_wrap(~chem) +
+  geom_hline(yintercept = 0) +
+  theme_bw() +
+labs(y = "Beta Coefficients",
+       x = "Seed Number",
+       title  = "Group Lasso Beta Coefficients Over 100 seeds") +
+   theme(axis.text.x = element_text(size = 9.5),
+                      legend.position = "bottom",
+                      legend.text = element_text(size = 12),
+        axis.text.y = element_text(size = 9.5),
+        text = element_text(size = 12.5)) 
+ 
+
+
+```
+
+
+## Visualization summarizing the results
+
+```{r}
+
+#summary_data_grlasso <- read_csv("./grlasso_grpreg/summary_data_grlasso.csv") %>%
+ # dplyr::select(-X1)
+
+summary_data_grlasso %>%
+  group_by(chem) %>%
+  ggplot(aes(x = chem)) +
+ geom_hline(yintercept = 0, color = "black") +
+  geom_jitter(aes(y = beta_grlasso, color = Group), shape=16, size = 1, alpha = 1,  position=position_jitter(width = .2))  +
+   geom_boxplot(aes(y = beta_grlasso), outlier.shape = NA, alpha = 0) +
+ # stat_summary(aes(y = beta_grlasso), fun.data = mean_sdl, fun.args = list(mult = 1), geom = "errorbar", width=0.25) +
+  # stat_summary(aes(y = beta_grlasso, fill = Group), fun.y = mean, geom ="point", shape=23, size=3, alpha = 1) +
+  #geom_point(aes(y = mean, fill = Group), shape = 23, size = 3, alpha = 1) +
+ #geom_errorbar(aes(ymin = mean-se, ymax=mean+se), width=.1, position=position_dodge(0.05)) +
+  geom_col(aes(y = number_nonzero/4000, fill = Group), width = 0.8, position ="identity", alpha = 0.002) +
+  scale_y_continuous(sec.axis = sec_axis(~.*4000, name = "# of Non-zero Beta Coefficients")) +
+  theme_classic() +
+  labs(y = "Beta Coefficients",
+       x = element_blank()) +
+      theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 14),
+            legend.position = "bottom",
+            legend.text = element_text(size = 12),
+            axis.text.y = element_text(size = 12),
+            text = element_text(size = 12), 
+            aspect.ratio = 1/1,
+            axis.line.x = element_blank(),
+            axis.ticks.x = element_blank(),
+            legend.title = element_blank(),
+            axis.line.y = element_line(color = "black"))
+ 
+ 
+```
+
+

@@ -184,6 +184,7 @@ repeat_cv =
 ```
 
 #### Without Error Bars
+
 ```{r}
 #pdf("./Figures/NewRNewPackage/new_r_new_package_cv_curves.pdf")
 repeat_cv %>% 
