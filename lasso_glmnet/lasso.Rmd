@@ -10,9 +10,7 @@ editor_options:
   chunk_output_type: console
 ---
 
-
 ## Load packages
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
@@ -22,7 +20,6 @@ library(Hmisc)
 library(glmnet)
 library(grpreg)
 ```
-
 
 ```{r}
 sessionInfo()
@@ -74,17 +71,13 @@ best_lambda = cv.lasso$lambda.min
 best_lambda
 ```
 
-
 ## Lasso over 100 seeds
 
 Note: this code chunk takes very long to run. We saved the output data as a .csv called "summary_data_lasso.csv" that you can use in code chunk 5 and 6.
 
 ### Function
-
 ```{r 3}
-
 #  Function to run lasso over 100 seeds
-
 fit_cv_lasso = function(seed) {
   set.seed(seed)
   cv.lasso = cv.glmnet(x, y, 
@@ -118,14 +111,9 @@ repeat_cv_lasso =
   dplyr::select(-fits) %>% 
   unnest() %>%
   rename(beta_lasso = "beta") 
-
-
 ```
 
-
-
 ### 100 seeds data output (tidying)
-
 ```{r 4}
 data_lasso <- repeat_cv_lasso %>%
   filter(!variable %in% c("bmi_cat32", "bmi_cat33", "edu_cat2", "edu_cat3", "edu_cat4", "race_cat2", "race_cat3", "race_cat4", "male1", "ln_lbxcot", "age_cent", "age_sq", "lbxwbcsi", "lbxlypct", "lbxlypct", "lbxmopct", "lbxmopct", "lbxnepct",
@@ -168,10 +156,8 @@ counts <- data_lasso %>%
   group_by(chem) %>%
   summarise(number_nonzero = n())
   
-
 summary_data_lasso <- full_join(data_lasso, counts, by = "chem") %>%
   mutate_if(is.numeric, ~replace(., is.na(.), 0))
-
 
 summary_data_lasso$chem <- factor(summary_data_lasso$chem,levels = c("1,2,3,6,7,8-hxcdd",
                                 "1,2,3,4,6,7,8-hpcdd",
@@ -193,17 +179,38 @@ summary_data_lasso$chem <- factor(summary_data_lasso$chem,levels = c("1,2,3,6,7,
                                 "PCB 169"))
 
 #write.csv(summary_data_lasso, "summary_data_lasso.csv")
-
-
 ```
 
+### Best Lambda
+```{r}
+coef_sum <- repeat_cv_lasso %>% 
+  filter(grepl("la$", variable)) %>% 
+  mutate(Count = ifelse(beta_lasso == 0, 0, 1),
+         seed = as.factor(seed)) %>% 
+  group_by(seed) %>% 
+  summarise(Sum = sum(Count)) %>%
+  left_join(., repeat_cv_lasso_2 %>% 
+                dplyr::select(seed, best_lambda) %>% distinct(),
+            by = "seed") %>% 
+  arrange(Sum)
+
+coef_sum %>% pull(Sum) %>% table()
+
+quant <- repeat_cv_lasso_2 %>% 
+  dplyr::select(seed, best_lambda) %>% 
+  distinct() %>% pull(best_lambda) %>% 
+  quantile() %>% as_tibble(.) %>% rename(best_lambda = value) %>% 
+  mutate(quant = c("0%", "25%", "50%", "75%", "100%"))
+
+left_join(quant, coef_sum, by = "best_lambda") %>% 
+  dplyr::select(-seed) %>% 
+  distinct()
+```
 
 ## Lasso visualization
 
 ### Betas plot
-
 ```{r 5}
-
 summary_data_lasso <- read_csv("./lasso_glmnet/summary_data_lasso.csv") %>%
   dplyr::select(-X1)
 
@@ -213,13 +220,10 @@ summary_data_lasso  %>%
   facet_wrap(~chem) + 
   geom_hline(yintercept = 0) +
   ggtitle("Lasso betas over 100 seeds")
-
 ```
 
 ### Summary plot for lasso
-
 ```{r 6}
-
 #pdf("./Figures/lasso_summary.pdf")
 summary_data_lasso %>%
   group_by(chem) %>%
@@ -246,13 +250,10 @@ summary_data_lasso %>%
         legend.title = element_blank()) +
   geom_boxplot(aes(y = beta_lasso), outlier.shape = NA, alpha = 0) 
 #dev.off()
-  
 ```
 
 ## Lasso over 100 seeds to obtain lambdas
-
 ```{r 7}
-
 fit_cv_lasso_2 = function(seed) {
   set.seed(seed)
   cv.lasso = cv.glmnet(x, y, 
@@ -270,7 +271,6 @@ fit_cv_lasso_2 = function(seed) {
     mutate(upper = cvm + 1.96*cvsd,
          lower = cvm - 1.96*cvsd) %>% 
     mutate(seed1 = seed)
-
 }
 
 repeat_cv_lasso_2 = 
@@ -279,27 +279,9 @@ repeat_cv_lasso_2 =
     fits = map(seed, ~fit_cv_lasso_2(seed = .x))) %>% 
   unnest() %>% 
   mutate(seed = as.factor(seed))
-
-  
 ```
-
-
-
-### Lambda with Error Bars
-
-```{r 8}
-repeat_cv_lasso_2 %>% 
-  ggplot(aes(x = lam, y = cvm, color = seed)) + 
-  geom_point() + 
-  geom_line() +
-  geom_errorbar(aes(ymin = lower, ymax = upper)) +
-  theme(legend.position = "none") +
-  labs(x = expression(lambda), y = "Cross-Validation Error")
-```
-
 
 ### Lambda without Error Bars
-
 ```{r}
 repeat_cv_lasso_2 %>% 
   ggplot(aes(x = lam, y = cvm, color = seed)) + 
@@ -311,7 +293,6 @@ repeat_cv_lasso_2 %>%
 ```
 
 #### Lambda to Plot
-
 ```{r 9}
 repeat_cv_lasso_2 %>% dplyr::select(seed, best_lambda) %>% distinct() %>% summary()
 repeat_cv_lasso_2 %>% dplyr::select(seed, best_lambda) %>% distinct() %>% pull(best_lambda) %>% quantile()
@@ -335,9 +316,7 @@ repeat_cv_lasso_2 %>%
 #dev.off()
 ```
 
-
 ### Selected lambda
-
 ```{r 10}
 min_cv <- repeat_cv_lasso_2 %>% 
   group_by(seed) %>% 
@@ -350,5 +329,4 @@ min_cv %>%
         axis.text.x = element_text(angle = 90, size = 7)) +
   labs(x = "seed", y = expression("Cross-Validation Selected "*lambda))
 ```
-
 
