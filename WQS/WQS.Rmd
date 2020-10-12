@@ -134,7 +134,7 @@ index_figure %>%
                  ymin = 0.0159226 - 1.96 * 0.006141966, 
                  ymax = 0.0159226 + 1.96 * 0.006141966), size = 0.35, color = "red") +
  coord_flip() +
-  theme_classic() + 
+  theme_minimal(base_size = 15) + 
   xlab("Seed") +
   ylab("Estimate") +
    theme(axis.text = element_text(size = 18),
@@ -253,9 +253,9 @@ summary_data_gwqs %>%
 
 ```
 
-## Visualization of beta values over different seeds (group lasso)
+## Visualization of beta values over different seeds 
 
-
+fig size: 7 x 8.5 in
 ```{r 8}
 
 summary_data_gwqs$chem <- factor(summary_data_gwqs$chem,levels = c("1,2,3,6,7,8-hxcdd",
@@ -279,25 +279,28 @@ summary_data_gwqs$chem <- factor(summary_data_gwqs$chem,levels = c("1,2,3,6,7,8-
 summary_data_gwqs %>%
   group_by(chem) %>%
   ggplot(aes(x = chem)) +
-  geom_hline(yintercept = 0.06, size = 0.7) +
-  geom_jitter(aes(y = mean_weight, color = Group), shape=16, size = 1, alpha = 1,  position=position_jitter(width = .2)) +
-  geom_col(aes(y = above_threshold/150, fill = Group), width = 0.8, position ="identity", alpha = 0.002) +
+  geom_col(aes(y = above_threshold/150, fill = Group), width = 0.9, position ="identity") +
+  geom_jitter(aes(y = mean_weight, color = Group), shape=16, size = 1.5, position=position_jitter(width = .2)) +
+   geom_hline(yintercept = 0.06, size = 0.7) +
   scale_y_continuous(sec.axis = sec_axis(~.*150, name = "# of Repeats Above Threshold")) +
-  theme_classic() +
+  theme_minimal(base_size = 15) +
   labs(y = "Weight",
        x = element_blank()) +
   theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 14),
                       legend.position = "bottom",
-                      legend.text = element_text(size = 12),
+                      legend.text = element_text(size = 14),
         axis.text.y = element_text(size = 12),
-        text = element_text(size = 14), 
+        text = element_text(size = 12), 
         aspect.ratio = 1/1,
         axis.line.x = element_blank(),
        # axis.line.y = element_line(color = "gray"),
         axis.ticks.x = element_blank(),
-       legend.title = element_blank()) +
-  geom_boxplot(aes(y = mean_weight), outlier.shape = NA, alpha = 0) 
-  
+       legend.title = element_blank(),
+        axis.title.y = element_text(size = 16)) +
+        # strip.background = element_rect(fill = "white")) +
+  geom_boxplot(aes(y = mean_weight), outlier.shape = NA, alpha = 0) +
+  scale_color_manual(values = c("#D55E00", "blue", "#117733")) +
+   scale_fill_manual(values = c("#E69F00", "#56B4E9", "#999933")) 
  
  
 ```

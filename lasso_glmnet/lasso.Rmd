@@ -108,7 +108,7 @@ extract_coefs = function(fit) {
     rename(beta = s0) 
 }
 
-# Apply function with seeds 1-100 (this takes very long time to finish running. I save a .csv file with the out put data so you don't have to run this)
+# Apply function with seeds 1-100 (this takes very long time to finish running. I save a .csv file with the output data so you don't have to run this)
 
 repeat_cv_lasso = 
   tibble(seed = 1:100) %>% 
@@ -127,6 +127,8 @@ repeat_cv_lasso =
 ### 100 seeds data output (tidying)
 
 ```{r 4}
+
+
 data_lasso <- repeat_cv_lasso %>%
   filter(!variable %in% c("bmi_cat32", "bmi_cat33", "edu_cat2", "edu_cat3", "edu_cat4", "race_cat2", "race_cat3", "race_cat4", "male1", "ln_lbxcot", "age_cent", "age_sq", "lbxwbcsi", "lbxlypct", "lbxlypct", "lbxmopct", "lbxmopct", "lbxnepct",
 "lbxnepct", "lbxeopct", "lbxeopct", "lbxbapct", "lbxbapct")) %>%
@@ -218,33 +220,37 @@ summary_data_lasso  %>%
 
 ### Summary plot for lasso
 
+fig size: 7 x 8.5 in
+
 ```{r 6}
 
-#pdf("./Figures/lasso_summary.pdf")
+#pdf("lasso_summary.pdf")
 summary_data_lasso %>%
   group_by(chem) %>%
   ggplot(aes(x = chem)) +
    geom_hline(yintercept = 0, color = "black") +
-  geom_jitter(aes(y = beta_lasso, color = Group), shape=16, size = 1, position=position_jitter(width = .2)) +
-  geom_col(aes(y = number_nonzero/4000, fill = Group), width = 0.8, position ="identity", alpha = 0.006) +
-
-  geom_col(aes(y = number_nonzero/4000, fill = Group), width = 0.8, position ="identity", alpha = 0.005) +
-
+  geom_col(aes(y = number_nonzero/4000, fill = Group), width = 0.9, position ="identity") +
+  geom_jitter(aes(y = beta_lasso, color = Group), shape=16, size = 1.5, position=position_jitter(width = .2)) +
+ # geom_col(aes(y = number_nonzero/4000, fill = Group), width = 0.8, position ="identity", alpha = 0.005) +
   scale_y_continuous(sec.axis = sec_axis(~.*4000, name = "# of Non-zero Beta Coefficients")) +
-  theme_classic() +
+  theme_minimal(base_size = 15) +
   labs(y = "Beta Coefficients",
        x = element_blank()) +
   theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 14),
                       legend.position = "bottom",
-                      legend.text = element_text(size = 12),
+                      legend.text = element_text(size = 14),
         axis.text.y = element_text(size = 12),
         text = element_text(size = 12), 
         aspect.ratio = 1/1,
         axis.line.x = element_blank(),
         axis.ticks.x = element_blank(),
         axis.line.y = element_line(color = "black"),
-        legend.title = element_blank()) +
-  geom_boxplot(aes(y = beta_lasso), outlier.shape = NA, alpha = 0) 
+        legend.title = element_blank(),
+        axis.title.y = element_text(size = 16),
+        strip.background = element_rect(fill = "white")) +
+  geom_boxplot(aes(y = beta_lasso), outlier.shape = NA, alpha = 0) +
+scale_color_manual(values = c("#D55E00", "blue", "#117733")) +
+   scale_fill_manual(values = c("#E69F00", "#56B4E9", "#999933"))
 #dev.off()
   
 ```
